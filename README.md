@@ -2,9 +2,9 @@
 
 <div align="center">
 
-![Nova Editor Logo](https://img.shields.io/badge/Nova-Editor-blue?style=for-the-badge&logo=react)
+![Nova Editor Logo](src/assets/nova-editor-logo.svg)
 
-**Next-generation visual editor for NovaECS game framework**  
+**Next-generation visual editor for NovaECS game framework**
 **下一代NovaECS游戏框架可视化编辑器**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

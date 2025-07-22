@@ -1,0 +1,106 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradient definitions -->
+    <linearGradient id="primaryGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1890ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#722ed1;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="secondaryGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#52c41a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1890ff;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#faad14;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ff4d4f;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Glow effect -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Drop shadow -->
+    <filter id="dropshadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="2" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="95" fill="#141414" stroke="url(#primaryGradient)" stroke-width="2" filter="url(#dropshadow)"/>
+  
+  <!-- Main Nova star/burst -->
+  <g transform="translate(100,100)" filter="url(#glow)">
+    <!-- Central core -->
+    <circle cx="0" cy="0" r="12" fill="url(#primaryGradient)"/>
+    
+    <!-- Star rays -->
+    <g>
+      <!-- Primary rays -->
+      <path d="M 0,-40 L 3,-12 L 0,-8 L -3,-12 Z" fill="url(#primaryGradient)" transform="rotate(0)"/>
+      <path d="M 0,-40 L 3,-12 L 0,-8 L -3,-12 Z" fill="url(#primaryGradient)" transform="rotate(45)"/>
+      <path d="M 0,-40 L 3,-12 L 0,-8 L -3,-12 Z" fill="url(#primaryGradient)" transform="rotate(90)"/>
+      <path d="M 0,-40 L 3,-12 L 0,-8 L -3,-12 Z" fill="url(#primaryGradient)" transform="rotate(135)"/>
+      <path d="M 0,-40 L 3,-12 L 0,-8 L -3,-12 Z" fill="url(#primaryGradient)" transform="rotate(180)"/>
+      <path d="M 0,-40 L 3,-12 L 0,-8 L -3,-12 Z" fill="url(#primaryGradient)" transform="rotate(225)"/>
+      <path d="M 0,-40 L 3,-12 L 0,-8 L -3,-12 Z" fill="url(#primaryGradient)" transform="rotate(270)"/>
+      <path d="M 0,-40 L 3,-12 L 0,-8 L -3,-12 Z" fill="url(#primaryGradient)" transform="rotate(315)"/>
+      
+      <!-- Secondary shorter rays -->
+      <path d="M 0,-25 L 2,-12 L 0,-10 L -2,-12 Z" fill="url(#secondaryGradient)" transform="rotate(22.5)"/>
+      <path d="M 0,-25 L 2,-12 L 0,-10 L -2,-12 Z" fill="url(#secondaryGradient)" transform="rotate(67.5)"/>
+      <path d="M 0,-25 L 2,-12 L 0,-10 L -2,-12 Z" fill="url(#secondaryGradient)" transform="rotate(112.5)"/>
+      <path d="M 0,-25 L 2,-12 L 0,-10 L -2,-12 Z" fill="url(#secondaryGradient)" transform="rotate(157.5)"/>
+      <path d="M 0,-25 L 2,-12 L 0,-10 L -2,-12 Z" fill="url(#secondaryGradient)" transform="rotate(202.5)"/>
+      <path d="M 0,-25 L 2,-12 L 0,-10 L -2,-12 Z" fill="url(#secondaryGradient)" transform="rotate(247.5)"/>
+      <path d="M 0,-25 L 2,-12 L 0,-10 L -2,-12 Z" fill="url(#secondaryGradient)" transform="rotate(292.5)"/>
+      <path d="M 0,-25 L 2,-12 L 0,-10 L -2,-12 Z" fill="url(#secondaryGradient)" transform="rotate(337.5)"/>
+    </g>
+  </g>
+  
+  <!-- ECS representation - interconnected nodes -->
+  <g opacity="0.8">
+    <!-- Entity nodes (circles) -->
+    <circle cx="60" cy="60" r="8" fill="url(#secondaryGradient)" filter="url(#glow)"/>
+    <circle cx="140" cy="60" r="8" fill="url(#secondaryGradient)" filter="url(#glow)"/>
+    <circle cx="60" cy="140" r="8" fill="url(#secondaryGradient)" filter="url(#glow)"/>
+    <circle cx="140" cy="140" r="8" fill="url(#secondaryGradient)" filter="url(#glow)"/>
+    
+    <!-- Component nodes (squares) -->
+    <rect x="46" y="86" width="8" height="8" fill="url(#accentGradient)" filter="url(#glow)" transform="rotate(45 50 90)"/>
+    <rect x="146" y="86" width="8" height="8" fill="url(#accentGradient)" filter="url(#glow)" transform="rotate(45 150 90)"/>
+    <rect x="86" y="46" width="8" height="8" fill="url(#accentGradient)" filter="url(#glow)" transform="rotate(45 90 50)"/>
+    <rect x="86" y="146" width="8" height="8" fill="url(#accentGradient)" filter="url(#glow)" transform="rotate(45 90 150)"/>
+    
+    <!-- System connections (lines) -->
+    <line x1="60" y1="60" x2="100" y2="100" stroke="url(#primaryGradient)" stroke-width="2" opacity="0.6"/>
+    <line x1="140" y1="60" x2="100" y2="100" stroke="url(#primaryGradient)" stroke-width="2" opacity="0.6"/>
+    <line x1="60" y1="140" x2="100" y2="100" stroke="url(#primaryGradient)" stroke-width="2" opacity="0.6"/>
+    <line x1="140" y1="140" x2="100" y2="100" stroke="url(#primaryGradient)" stroke-width="2" opacity="0.6"/>
+    
+    <!-- Component to Entity connections -->
+    <line x1="50" y1="90" x2="60" y2="60" stroke="url(#accentGradient)" stroke-width="1.5" opacity="0.4"/>
+    <line x1="150" y1="90" x2="140" y2="60" stroke="url(#accentGradient)" stroke-width="1.5" opacity="0.4"/>
+    <line x1="90" y1="50" x2="60" y2="60" stroke="url(#accentGradient)" stroke-width="1.5" opacity="0.4"/>
+    <line x1="90" y1="150" x2="140" y2="140" stroke="url(#accentGradient)" stroke-width="1.5" opacity="0.4"/>
+  </g>
+  
+  <!-- Text elements -->
+  <g font-family="Arial, sans-serif" font-weight="bold" text-anchor="middle">
+    <!-- Nova text -->
+    <text x="100" y="175" font-size="16" fill="url(#primaryGradient)" filter="url(#glow)">NOVA</text>
+    <!-- ECS text -->
+    <text x="100" y="190" font-size="10" fill="#a0a0a0">ECS</text>
+  </g>
+  
+  <!-- Subtle outer ring -->
+  <circle cx="100" cy="100" r="85" fill="none" stroke="url(#primaryGradient)" stroke-width="1" opacity="0.3"/>
+  
+  <!-- Version indicator (small dot) -->
+  <circle cx="170" cy="30" r="3" fill="url(#secondaryGradient)" opacity="0.7"/>
+</svg>
