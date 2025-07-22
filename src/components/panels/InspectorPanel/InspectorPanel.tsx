@@ -3,7 +3,7 @@
  * 检查器面板 - 实体和组件属性编辑器
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Card, 
   Button, 
@@ -372,6 +372,14 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
   const addComponent = useEditorStore(state => state.addComponent);
   const removeComponent = useEditorStore(state => state.removeComponent);
   const updateComponentProperty = useEditorStore(state => state.updateComponentProperty);
+  // Subscribe to force update trigger to refresh when components change
+  const forceUpdateTrigger = useEditorStore(state => state.forceUpdateTrigger);
+
+  // Force re-render when components change
+  const [, forceUpdate] = useState({});
+  useEffect(() => {
+    forceUpdate({});
+  }, [forceUpdateTrigger]);
 
   // Get the primary selected entity from NovaECS world
   const selectedEntity = primarySelection && typeof primarySelection === 'number' && world

@@ -3,10 +3,11 @@
  * 场景视图面板 - 用于场景编辑的3D视口
  */
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useRef, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Grid, GizmoHelper, GizmoViewport, Bounds } from '@react-three/drei';
+import { OrbitControls, Grid, GizmoHelper, GizmoViewport, Bounds, TransformControls } from '@react-three/drei';
 import { Button, Space, Tooltip } from 'antd';
+import * as THREE from 'three';
 import {
   BorderOutlined,
   CompressOutlined,
@@ -16,12 +17,151 @@ import { useEditorStore } from '../../../stores/editorStore';
 import { TransformComponent, MeshRendererComponent, EditorMetadataComponent } from '../../../ecs';
 
 /**
+ * Entity with transform controls
+ * 带变换控制的实体
+ */
+interface EntityObjectProps {
+  id: number;
+  position: [number, number, number];
+  rotation: [number, number, number];
+  scale: [number, number, number];
+  color: string;
+  geometryType: string;
+  isSelected: boolean;
+  hasRenderer: boolean;
+  onSelect: (id: number) => void;
+  onTransformChange: (id: number, transform: any) => void;
+  onDraggingChange?: (isDragging: boolean) => void;
+}
+
+const EntityObject: React.FC<EntityObjectProps> = ({
+  id,
+  position,
+  rotation,
+  scale,
+  color,
+  geometryType,
+  isSelected,
+  hasRenderer,
+  onSelect,
+  onTransformChange,
+  onDraggingChange
+}) => {
+  const [mesh, setMesh] = React.useState<THREE.Mesh | null>(null);
+  const [isDraggingThis, setIsDraggingThis] = React.useState(false);
+  const transformRef = useRef<any>(null);
+
+  // Update transform when props change, but not while dragging
+  useEffect(() => {
+    if (mesh && !isDraggingThis) {
+      mesh.position.set(...position);
+      mesh.rotation.set(
+        rotation[0] * Math.PI / 180,
+        rotation[1] * Math.PI / 180,
+        rotation[2] * Math.PI / 180
+      );
+      mesh.scale.set(...scale);
+    }
+  }, [mesh, position, rotation, scale, isDraggingThis]);
+
+  // Callback ref to capture the mesh
+  const meshRefCallback = React.useCallback((meshNode: THREE.Mesh | null) => {
+    setMesh(meshNode);
+  }, []);
+
+  const renderGeometry = () => {
+    switch (geometryType) {
+      case 'sphere':
+        return <sphereGeometry args={[0.5, 16, 16]} />;
+      case 'plane':
+        return <planeGeometry args={[1, 1]} />;
+      default:
+        return <boxGeometry args={[1, 1, 1]} />;
+    }
+  };
+
+  const handleDragStart = React.useCallback(() => {
+    setIsDraggingThis(true);
+    onDraggingChange?.(true);
+  }, [onDraggingChange]);
+
+  const handleDragEnd = React.useCallback(() => {
+    setIsDraggingThis(false);
+    onDraggingChange?.(false);
+    
+    // Only update the store when dragging ends
+    if (mesh) {
+      onTransformChange(id, {
+        position: { x: mesh.position.x, y: mesh.position.y, z: mesh.position.z },
+        rotation: { 
+          x: mesh.rotation.x * 180 / Math.PI, 
+          y: mesh.rotation.y * 180 / Math.PI, 
+          z: mesh.rotation.z * 180 / Math.PI 
+        },
+        scale: { x: mesh.scale.x, y: mesh.scale.y, z: mesh.scale.z }
+      });
+    }
+  }, [mesh, id, onTransformChange, onDraggingChange]);
+
+  return (
+    <>
+      {/* Always create a mesh for transform controls, visible only if has renderer */}
+      <mesh
+        ref={meshRefCallback}
+        position={position}
+        rotation={rotation.map(r => r * Math.PI / 180) as [number, number, number]}
+        scale={scale}
+        visible={hasRenderer}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect(id);
+        }}
+      >
+        {renderGeometry()}
+        <meshStandardMaterial 
+          color={color} 
+          transparent={isSelected}
+          opacity={isSelected ? 0.8 : 1}
+        />
+      </mesh>
+      
+      {/* Always show transform controls for selected entities */}
+      {isSelected && mesh && (
+        <TransformControls
+          ref={transformRef}
+          object={mesh}
+          mode="translate"
+          onMouseDown={handleDragStart}
+          onMouseUp={handleDragEnd}
+        />
+      )}
+    </>
+  );
+};
+
+/**
+ * Scene content component - manages dragging state
+ * 场景内容组件 - 管理拖拽状态
+ */
+interface SceneContentProps {
+  onDraggingChange: (isDragging: boolean) => void;
+}
+
+/**
  * Scene objects component - renders the actual 3D content
  * 场景对象组件 - 渲染实际的3D内容
  */
-const SceneObjects: React.FC = () => {
+const SceneObjects: React.FC<SceneContentProps> = ({ onDraggingChange }) => {
   const selectedEntities = useEditorStore(state => state.selection.selectedEntities);
   const selectEntity = useEditorStore(state => state.selectEntity);
+  const updateComponentProperty = useEditorStore(state => state.updateComponentProperty);
+  const forceUpdateTrigger = useEditorStore(state => state.forceUpdateTrigger);
+  
+  // Force re-render when components change
+  const [, forceUpdate] = React.useState({});
+  React.useEffect(() => {
+    forceUpdate({});
+  }, [forceUpdateTrigger]);
   
   // Get entities from NovaECS world
   // 从 NovaECS 世界获取实体
@@ -49,68 +189,39 @@ const SceneObjects: React.FC = () => {
       };
     }) : [];
 
+  // Handle transform changes
+  const handleTransformChange = (entityId: number, transform: any) => {
+    // Update position
+    updateComponentProperty(entityId, 'Transform', 'position', transform.position);
+    
+    // Update rotation
+    updateComponentProperty(entityId, 'Transform', 'rotation', transform.rotation);
+    
+    // Update scale
+    updateComponentProperty(entityId, 'Transform', 'scale', transform.scale);
+  };
+
   return (
     <>
+      {/* Render all entities with transform component */}
       {objects.map((obj: any) => {
         const isSelected = selectedEntities.includes(obj.id as number);
         
-        // Choose geometry based on component type
-        const renderGeometry = () => {
-          switch (obj.geometryType) {
-            case 'sphere':
-              return <sphereGeometry args={[0.5, 16, 16]} />;
-            case 'plane':
-              return <planeGeometry args={[1, 1]} />;
-            default:
-              return <boxGeometry args={[1, 1, 1]} />;
-          }
-        };
-        
-        const renderSelectionOutline = () => {
-          switch (obj.geometryType) {
-            case 'sphere':
-              return <sphereGeometry args={[0.55, 16, 16]} />;
-            case 'plane':
-              return <planeGeometry args={[1.1, 1.1]} />;
-            default:
-              return <boxGeometry args={[1.1, 1.1, 1.1]} />;
-          }
-        };
-        
         return (
-          <mesh
-            key={obj.id}
+          <EntityObject
+            key={`entity-${obj.id}`}
+            id={obj.id}
             position={obj.position}
-            scale={obj.scale || [1, 1, 1]}
-            rotation={obj.rotation ? [obj.rotation[0] * Math.PI / 180, obj.rotation[1] * Math.PI / 180, obj.rotation[2] * Math.PI / 180] : [0, 0, 0]}
-            onClick={(e) => {
-              e.stopPropagation();
-              selectEntity(obj.id as number);
-            }}
-          >
-            {renderGeometry()}
-            <meshStandardMaterial 
-              color={obj.color} 
-              wireframe={isSelected || !obj.hasRenderer}
-              transparent={isSelected}
-              opacity={isSelected ? 0.8 : (obj.hasRenderer ? 1 : 0.5)}
-            />
-            
-            {/* Selection outline */}
-            {isSelected && (
-              <mesh>
-                {renderSelectionOutline()}
-                <meshBasicMaterial color="#ffff00" wireframe transparent opacity={0.3} />
-              </mesh>
-            )}
-            
-            {/* Entity name label (optional) */}
-            {isSelected && (
-              <mesh position={[0, obj.scale[1] + 0.5, 0]}>
-                {/* Text rendering would require additional setup */}
-              </mesh>
-            )}
-          </mesh>
+            rotation={obj.rotation}
+            scale={obj.scale}
+            color={obj.color}
+            geometryType={obj.geometryType}
+            isSelected={isSelected}
+            hasRenderer={obj.hasRenderer}
+            onSelect={selectEntity}
+            onTransformChange={handleTransformChange}
+            onDraggingChange={onDraggingChange}
+          />
         );
       })}
     </>
@@ -227,6 +338,36 @@ export const SceneViewPanel: React.FC<SceneViewPanelProps> = ({
   const showGrid = useEditorStore(state => state.viewport.showGrid);
   const showGizmos = useEditorStore(state => state.viewport.showGizmos);
   const clearSelection = useEditorStore(state => state.clearSelection);
+  const worldStats = useEditorStore(state => state.world.stats);
+  const [isDragging, setIsDragging] = React.useState(false);
+  const [renderStats, setRenderStats] = React.useState({ fps: 0, frameTime: 0 });
+  const orbitControlsRef = useRef<any>(null);
+
+  // Track render performance
+  const frameTimeRef = useRef<number[]>([]);
+  const lastFrameTimeRef = useRef(performance.now());
+
+  React.useEffect(() => {
+    const updateRenderStats = () => {
+      const now = performance.now();
+      const frameTime = now - lastFrameTimeRef.current;
+      lastFrameTimeRef.current = now;
+
+      frameTimeRef.current.push(frameTime);
+      if (frameTimeRef.current.length > 60) {
+        frameTimeRef.current.shift();
+      }
+
+      const averageFrameTime = frameTimeRef.current.reduce((a, b) => a + b, 0) / frameTimeRef.current.length;
+      const fps = Math.round(1000 / averageFrameTime);
+
+      setRenderStats({ fps, frameTime: Math.round(averageFrameTime * 100) / 100 });
+      requestAnimationFrame(updateRenderStats);
+    };
+
+    const frame = requestAnimationFrame(updateRenderStats);
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   return (
     <div 
@@ -285,11 +426,13 @@ export const SceneViewPanel: React.FC<SceneViewPanelProps> = ({
           
           {/* Scene Objects */}
           <Bounds fit clip observe margin={1.2}>
-            <SceneObjects />
+            <SceneObjects onDraggingChange={setIsDragging} />
           </Bounds>
           
-          {/* Controls */}
+          {/* Controls - disabled when dragging transform controls */}
           <OrbitControls
+            ref={orbitControlsRef}
+            enabled={!isDragging}
             enablePan={true}
             enableZoom={true}
             enableRotate={true}
@@ -326,9 +469,16 @@ export const SceneViewPanel: React.FC<SceneViewPanelProps> = ({
         padding: '4px 8px',
         borderRadius: '4px',
         fontSize: '12px',
-        color: '#ccc'
+        color: '#ccc',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '2px'
       }}>
-        Camera: Press mouse to navigate | Objects: Click to select
+        <div>Camera: Press mouse to navigate | Objects: Click to select</div>
+        <div>
+          Render: {renderStats.fps} FPS ({renderStats.frameTime}ms) | 
+          ECS: {worldStats.entityCount} entities, {worldStats.systemCount} systems
+        </div>
       </div>
     </div>
   );

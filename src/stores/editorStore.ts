@@ -45,6 +45,9 @@ interface EditorState {
   // World state | 世界状态
   world: WorldState;
   
+  // Force update trigger | 强制更新触发器
+  forceUpdateTrigger: number;
+  
   // Theme state | 主题状态
   theme: ThemeConfig;
   
@@ -250,6 +253,7 @@ export const useEditorStore = create<EditorState & EditorActions>()(
       isLoading: false,
       activePanel: null,
       events: [],
+      forceUpdateTrigger: 0,
 
       // Actions | 操作
       setProject: (project) => set((state) => {
@@ -438,6 +442,10 @@ export const useEditorStore = create<EditorState & EditorActions>()(
         const integration = state.world.instance?._integration;
         if (integration) {
           integration.getStoreActions().setEntityName(entityId, name);
+          // Force update to refresh Inspector panel
+          set((state) => {
+            state.forceUpdateTrigger = state.forceUpdateTrigger + 1;
+          });
         }
       },
 
@@ -455,6 +463,10 @@ export const useEditorStore = create<EditorState & EditorActions>()(
         const integration = state.world.instance?._integration;
         if (integration) {
           integration.getStoreActions().addComponent(entityId, componentType);
+          // Force update to refresh Inspector panel
+          set((state) => {
+            state.forceUpdateTrigger = state.forceUpdateTrigger + 1;
+          });
         }
       },
 
@@ -463,6 +475,10 @@ export const useEditorStore = create<EditorState & EditorActions>()(
         const integration = state.world.instance?._integration;
         if (integration) {
           integration.getStoreActions().removeComponent(entityId, componentType);
+          // Force update to refresh Inspector panel
+          set((state) => {
+            state.forceUpdateTrigger = state.forceUpdateTrigger + 1;
+          });
         }
       },
 
@@ -471,6 +487,10 @@ export const useEditorStore = create<EditorState & EditorActions>()(
         const integration = state.world.instance?._integration;
         if (integration) {
           integration.getStoreActions().updateComponentProperty(entityId, componentType, property, value);
+          // Force update to refresh Inspector panel
+          set((state) => {
+            state.forceUpdateTrigger = state.forceUpdateTrigger + 1;
+          });
         }
       }
     })),

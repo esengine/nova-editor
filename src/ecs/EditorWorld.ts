@@ -15,6 +15,14 @@ export class EditorWorld extends World {
   private readonly _selectedEntities = new Set<EntityId>();
   private _primarySelection: EntityId | null = null;
 
+  constructor() {
+    super();
+    
+    // Disable event pooling in editor mode to avoid pool warnings
+    // Editor doesn't need the performance optimization of event pooling
+    this.eventBus.setPoolingEnabled(false);
+  }
+
   /**
    * Get editor event system
    * 获取编辑器事件系统

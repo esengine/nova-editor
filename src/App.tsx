@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { ConfigProvider, Layout, theme } from 'antd';
+import { ConfigProvider, Layout, theme, App as AntdApp } from 'antd';
 import { useEditorStore } from './stores/editorStore';
 import { useEditorWorld } from './hooks/useEditorWorld';
 import { HierarchyPanel } from './components/panels/HierarchyPanel';
@@ -42,7 +42,8 @@ function App(): React.ReactElement {
         },
       }}
     >
-      <Layout style={{ minHeight: '100vh' }}>
+      <AntdApp>
+        <Layout style={{ minHeight: '100vh' }}>
         <Header style={{
           padding: '0 16px',
           background: editorTheme.colors.surface,
@@ -160,6 +161,7 @@ function App(): React.ReactElement {
           Nova Editor ©2025 Created by esengine
         </Footer>
       </Layout>
+      </AntdApp>
     </ConfigProvider>
   );
 }

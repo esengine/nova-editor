@@ -11,7 +11,7 @@ import {
   Input, 
   Dropdown, 
   Modal,
-  message,
+  App,
   Tooltip
 } from 'antd';
 
@@ -60,6 +60,8 @@ export const HierarchyPanel: React.FC<HierarchyPanelProps> = ({
   className, 
   style 
 }) => {
+  const { message } = App.useApp();
+  
   // State management | 状态管理
   const selectedEntities = useEditorStore(state => state.selection.selectedEntities);
   const selectEntity = useEditorStore(state => state.selectEntity);

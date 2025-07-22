@@ -116,12 +116,20 @@ export class EditorStoreIntegration {
       // Entity creation
       createEntity: (name?: string) => {
         const entityName = name || `Entity_${Date.now()}`;
-        const entity = this._world.createNamedEntity(entityName);
+        const entity = this._world.createEntity();
+        
+        // Add editor metadata component
+        entity.addComponent(new EditorMetadataComponent(entityName));
         
         // Add default Transform component if not present
         if (!entity.getComponent(TransformComponent)) {
           entity.addComponent(new TransformComponent());
         }
+        
+        this._world.editorEvents.emit('entityCreated', {
+          entityId: entity.id,
+          name: entityName
+        });
         
         this._updateHierarchy();
         return entity;
@@ -137,8 +145,12 @@ export class EditorStoreIntegration {
       setEntityName: (entityId: EntityId, name: string) => {
         const entity = this._world.getEntity(entityId);
         if (entity) {
-          const metadata = entity.getComponent(EditorMetadataComponent);
-          if (metadata) {
+          let metadata = entity.getComponent(EditorMetadataComponent);
+          if (!metadata) {
+            // Create metadata component if it doesn't exist
+            metadata = new EditorMetadataComponent(name);
+            entity.addComponent(metadata);
+          } else {
             const oldName = metadata.name;
             metadata.name = name;
             this._world.editorEvents.emit('entityRenamed', {
@@ -146,8 +158,8 @@ export class EditorStoreIntegration {
               oldName,
               newName: name
             });
-            this._updateHierarchy();
           }
+          this._updateHierarchy();
         }
       },
 
