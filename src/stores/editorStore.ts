@@ -16,6 +16,7 @@ import type {
   PanelConfig,
   WorldState
 } from '../types';
+import type { AssetBrowserState, AssetType } from '../types/AssetTypes';
 import {
   EditorEventType,
   PanelType
@@ -44,6 +45,9 @@ interface EditorState {
   
   // World state | 世界状态
   world: WorldState;
+  
+  // Asset browser state | 资源浏览器状态
+  assetBrowser: AssetBrowserState;
   
   // Force update trigger | 强制更新触发器
   forceUpdateTrigger: number;
@@ -114,6 +118,14 @@ interface EditorActions {
   // Event actions | 事件操作
   dispatchEvent: (type: EditorEventType, data?: unknown) => void;
   clearEvents: () => void;
+  
+  // Asset browser actions | 资源浏览器操作
+  navigateToFolder: (folderId: string) => void;
+  setAssetViewMode: (mode: 'grid' | 'list') => void;
+  setAssetGridSize: (size: number) => void;
+  searchAssets: (query: string) => void;
+  filterAssetsByType: (type: AssetType | null) => void;
+  sortAssets: (by: 'name' | 'type' | 'size' | 'date', order: 'asc' | 'desc') => void;
 }
 
 /**
@@ -248,6 +260,18 @@ export const useEditorStore = create<EditorState & EditorActions>()(
         size: { x: 800, y: 600 },
         showGrid: true,
         showGizmos: true
+      },
+      assetBrowser: {
+        currentFolderId: 'root',
+        selectedAssets: [],
+        primarySelection: null,
+        viewMode: 'grid',
+        gridSize: 128,
+        searchQuery: '',
+        typeFilter: null,
+        sortBy: 'name',
+        sortOrder: 'asc',
+        isLoading: false
       },
       theme: defaultTheme,
       isLoading: false,
@@ -492,7 +516,35 @@ export const useEditorStore = create<EditorState & EditorActions>()(
             state.forceUpdateTrigger = state.forceUpdateTrigger + 1;
           });
         }
-      }
+      },
+
+      // Asset browser actions implementation
+      navigateToFolder: (folderId) => set((state) => {
+        state.assetBrowser.currentFolderId = folderId;
+        state.assetBrowser.selectedAssets = [];
+        state.assetBrowser.primarySelection = null;
+      }),
+
+      setAssetViewMode: (mode) => set((state) => {
+        state.assetBrowser.viewMode = mode;
+      }),
+
+      setAssetGridSize: (size) => set((state) => {
+        state.assetBrowser.gridSize = Math.max(64, Math.min(256, size));
+      }),
+
+      searchAssets: (query) => set((state) => {
+        state.assetBrowser.searchQuery = query;
+      }),
+
+      filterAssetsByType: (type) => set((state) => {
+        state.assetBrowser.typeFilter = type;
+      }),
+
+      sortAssets: (by, order) => set((state) => {
+        state.assetBrowser.sortBy = by;
+        state.assetBrowser.sortOrder = order;
+      })
     })),
     {
       name: 'nova-editor-store'

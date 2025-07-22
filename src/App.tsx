@@ -10,6 +10,7 @@ import { useEditorWorld } from './hooks/useEditorWorld';
 import { HierarchyPanel } from './components/panels/HierarchyPanel';
 import { SceneViewPanel } from './components/panels/SceneViewPanel';
 import { InspectorPanel } from './components/panels/InspectorPanel';
+import { AssetBrowserPanel } from './components/panels/AssetBrowserPanel';
 import './App.css';
 
 const { Header, Content, Footer } = Layout;
@@ -68,64 +69,101 @@ function App(): React.ReactElement {
           padding: '16px',
           background: editorTheme.colors.background,
           display: 'flex',
+          flexDirection: 'column',
           gap: '16px',
           overflow: 'hidden'
         }}>
-          {/* Left Panel - Hierarchy */}
-          <div style={{
-            width: '300px',
-            minWidth: '250px',
-            display: 'flex',
-            flexDirection: 'column'
-          }}>
-            <div style={{
-              marginBottom: '8px',
-              padding: '8px 12px',
-              background: editorTheme.colors.surface,
-              border: `1px solid ${editorTheme.colors.border}`,
-              borderRadius: '6px 6px 0 0',
-              borderBottom: 'none',
-              color: editorTheme.colors.text,
-              fontWeight: 'bold',
-              fontSize: '14px'
-            }}>
-              Hierarchy
-            </div>
-            <HierarchyPanel style={{ flex: 1, borderRadius: '0 0 6px 6px' }} />
-          </div>
-
-          {/* Center Panel - Scene View */}
+          {/* Top Row - Main panels */}
           <div style={{
             flex: 1,
             display: 'flex',
-            flexDirection: 'column'
+            gap: '16px',
+            minHeight: 0
           }}>
+            {/* Left Panel - Hierarchy */}
             <div style={{
-              marginBottom: '8px',
-              padding: '8px 12px',
-              background: editorTheme.colors.surface,
-              border: `1px solid ${editorTheme.colors.border}`,
-              borderRadius: '6px 6px 0 0',
-              borderBottom: 'none',
-              color: editorTheme.colors.text,
-              fontWeight: 'bold',
-              fontSize: '14px'
+              width: '300px',
+              minWidth: '250px',
+              display: 'flex',
+              flexDirection: 'column'
             }}>
-              Scene View
+              <div style={{
+                marginBottom: '8px',
+                padding: '8px 12px',
+                background: editorTheme.colors.surface,
+                border: `1px solid ${editorTheme.colors.border}`,
+                borderRadius: '6px 6px 0 0',
+                borderBottom: 'none',
+                color: editorTheme.colors.text,
+                fontWeight: 'bold',
+                fontSize: '14px'
+              }}>
+                Hierarchy
+              </div>
+              <HierarchyPanel style={{ flex: 1, borderRadius: '0 0 6px 6px' }} />
             </div>
-            <SceneViewPanel 
-              style={{ 
-                flex: 1,
-                borderRadius: '0 0 6px 6px',
-                border: `1px solid ${editorTheme.colors.border}`
-              }} 
-            />
+
+            {/* Center Panel - Scene View */}
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              <div style={{
+                marginBottom: '8px',
+                padding: '8px 12px',
+                background: editorTheme.colors.surface,
+                border: `1px solid ${editorTheme.colors.border}`,
+                borderRadius: '6px 6px 0 0',
+                borderBottom: 'none',
+                color: editorTheme.colors.text,
+                fontWeight: 'bold',
+                fontSize: '14px'
+              }}>
+                Scene View
+              </div>
+              <SceneViewPanel 
+                style={{ 
+                  flex: 1,
+                  borderRadius: '0 0 6px 6px',
+                  border: `1px solid ${editorTheme.colors.border}`
+                }} 
+              />
+            </div>
+
+            {/* Right Panel - Inspector */}
+            <div style={{
+              width: '300px',
+              minWidth: '250px',
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              <div style={{
+                marginBottom: '8px',
+                padding: '8px 12px',
+                background: editorTheme.colors.surface,
+                border: `1px solid ${editorTheme.colors.border}`,
+                borderRadius: '6px 6px 0 0',
+                borderBottom: 'none',
+                color: editorTheme.colors.text,
+                fontWeight: 'bold',
+                fontSize: '14px'
+              }}>
+                Inspector
+              </div>
+              <InspectorPanel 
+                style={{ 
+                  flex: 1,
+                  borderRadius: '0 0 6px 6px',
+                  border: `1px solid ${editorTheme.colors.border}`
+                }} 
+              />
+            </div>
           </div>
 
-          {/* Right Panel - Inspector */}
+          {/* Bottom Row - Asset Browser */}
           <div style={{
-            width: '300px',
-            minWidth: '250px',
+            height: '250px',
             display: 'flex',
             flexDirection: 'column'
           }}>
@@ -140,9 +178,9 @@ function App(): React.ReactElement {
               fontWeight: 'bold',
               fontSize: '14px'
             }}>
-              Inspector
+              Assets
             </div>
-            <InspectorPanel 
+            <AssetBrowserPanel 
               style={{ 
                 flex: 1,
                 borderRadius: '0 0 6px 6px',
