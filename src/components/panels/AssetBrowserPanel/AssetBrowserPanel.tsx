@@ -195,20 +195,24 @@ const FolderBreadcrumb: React.FC<FolderBreadcrumbProps> = ({
 
   const breadcrumbPath = buildBreadcrumbPath();
 
+  const breadcrumbItems = breadcrumbPath.map((folder) => ({
+    key: folder.id,
+    title: (
+      <span 
+        onClick={() => onNavigate(folder.id)}
+        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+      >
+        {folder.id === 'root' ? <HomeOutlined /> : <FolderOutlined />}
+        <span style={{ marginLeft: '4px' }}>{folder.name}</span>
+      </span>
+    )
+  }));
+
   return (
-    <Breadcrumb style={{ margin: '8px 0' }}>
-      {breadcrumbPath.map((folder) => (
-        <Breadcrumb.Item key={folder.id}>
-          <span 
-            onClick={() => onNavigate(folder.id)}
-            style={{ cursor: 'pointer' }}
-          >
-            {folder.id === 'root' ? <HomeOutlined /> : <FolderOutlined />}
-            <span style={{ marginLeft: '4px' }}>{folder.name}</span>
-          </span>
-        </Breadcrumb.Item>
-      ))}
-    </Breadcrumb>
+    <Breadcrumb 
+      style={{ margin: '8px 0' }}
+      items={breadcrumbItems}
+    />
   );
 };
 
@@ -520,10 +524,18 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
             <Spin size="large" />
           </div>
         ) : assets.length === 0 ? (
-          <Empty
-            description="No assets found"
-            style={{ marginTop: '20%' }}
-          />
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%',
+            flexDirection: 'column'
+          }}>
+            <Empty
+              description="No assets found"
+              style={{ color: '#ccc' }}
+            />
+          </div>
         ) : assetBrowser.viewMode === 'grid' ? (
           renderGridView()
         ) : (

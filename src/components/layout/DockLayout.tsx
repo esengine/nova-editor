@@ -1,93 +1,18 @@
 /**
- * Dockable panel layout system
- * 可停靠面板布局系统
+ * Professional dock layout system using rc-dock
+ * 使用rc-dock的专业停靠布局系统
  */
 
-import React, { useCallback, useMemo } from 'react';
-import { Responsive, WidthProvider } from 'react-grid-layout';
-import type { Layout } from 'react-grid-layout';
+import React from 'react';
+import { DockLayout as RCDockLayout, type LayoutData } from 'rc-dock';
 import { useEditorStore } from '../../stores/editorStore';
 import { PanelType } from '../../types';
 import { HierarchyPanel } from '../panels/HierarchyPanel';
 import { SceneViewPanel } from '../panels/SceneViewPanel';
 import { InspectorPanel } from '../panels/InspectorPanel';
 import { AssetBrowserPanel } from '../panels/AssetBrowserPanel';
-import 'react-grid-layout/css/styles.css';
-import 'react-resizable/css/styles.css';
-
-const ResponsiveGridLayout = WidthProvider(Responsive);
-
-/**
- * Panel wrapper component with title bar
- * 带标题栏的面板包装组件
- */
-interface PanelWrapperProps {
-  title: string;
-  children: React.ReactNode;
-  onClose?: (() => void) | null;
-  theme: any;
-}
-
-const PanelWrapper: React.FC<PanelWrapperProps> = ({ 
-  title, 
-  children, 
-  onClose,
-  theme 
-}) => {
-  return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100%',
-      backgroundColor: theme.colors.background,
-      border: `1px solid ${theme.colors.border}`,
-      borderRadius: '6px',
-      overflow: 'hidden'
-    }}>
-      {/* Panel Title Bar */}
-      <div style={{
-        padding: '8px 12px',
-        backgroundColor: theme.colors.surface,
-        borderBottom: `1px solid ${theme.colors.border}`,
-        color: theme.colors.text,
-        fontWeight: 'bold',
-        fontSize: '14px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        cursor: 'move', // Indicates draggable
-        userSelect: 'none'
-      }} className="drag-handle">
-        <span>{title}</span>
-        {onClose && (
-          <button
-            onClick={() => onClose()}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: theme.colors.textSecondary,
-              cursor: 'pointer',
-              fontSize: '16px',
-              padding: '0',
-              width: '20px',
-              height: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            ×
-          </button>
-        )}
-      </div>
-      
-      {/* Panel Content */}
-      <div style={{ flex: 1, overflow: 'hidden' }}>
-        {children}
-      </div>
-    </div>
-  );
-};
+import { ConsolePanel } from '../panels/ConsolePanel';
+import 'rc-dock/dist/rc-dock.css';
 
 /**
  * Render panel content based on panel type
@@ -104,125 +29,293 @@ const renderPanelContent = (panelType: PanelType): React.ReactNode => {
     case PanelType.AssetBrowser:
       return <AssetBrowserPanel />;
     case PanelType.Console:
-      return <div style={{ padding: '16px', color: '#666' }}>Console panel coming soon...</div>;
+      return <ConsolePanel />;
     default:
       return <div style={{ padding: '16px', color: '#666' }}>Unknown panel type</div>;
   }
 };
 
 /**
- * Main dockable layout component
- * 主可停靠布局组件
+ * Panel tab component for rc-dock
+ */
+const PanelTab: React.FC<{ panelType: PanelType }> = ({ panelType }) => {
+  return (
+    <div style={{ height: '100%', overflow: 'hidden' }}>
+      {renderPanelContent(panelType)}
+    </div>
+  );
+};
+
+/**
+ * Main dock layout component
  */
 export interface DockLayoutProps {
   style?: React.CSSProperties;
   className?: string;
 }
 
-export const DockLayout: React.FC<DockLayoutProps> = ({ 
-  style, 
-  className 
+export const DockLayout: React.FC<DockLayoutProps> = ({
+  style,
+  className
 }) => {
-  const layout = useEditorStore(state => state.layout);
   const theme = useEditorStore(state => state.theme);
-  const updateLayout = useEditorStore(state => state.updateLayout);
-  const togglePanelVisibility = useEditorStore(state => state.togglePanelVisibility);
 
-  // Convert panel config to grid layout format
-  const gridLayouts = useMemo(() => {
-    const layouts = {
-      lg: layout.panels
-        .filter(panel => panel.visible)
-        .map((panel, index) => ({
-          i: panel.id,
-          x: panel.gridPosition?.x || (index % 4) * 3,
-          y: panel.gridPosition?.y || Math.floor(index / 4) * 4,
-          w: panel.gridPosition?.w || 3,
-          h: panel.gridPosition?.h || 4,
-          minW: Math.ceil((panel.minWidth || 200) / 100),
-          minH: Math.ceil((panel.minHeight || 200) / 50)
-        }))
-    };
-    
-    // Copy lg layout to other breakpoints for now
-    return {
-      lg: layouts.lg,
-      md: layouts.lg,
-      sm: layouts.lg,
-      xs: layouts.lg,
-      xxs: layouts.lg
-    };
-  }, [layout.panels]);
+  // Create dock layout data structure
+  const dockLayoutData: LayoutData = React.useMemo(() => ({
+    dockbox: {
+      mode: 'horizontal',
+      children: [
+        // Left panel group
+        {
+          mode: 'vertical',
+          size: 300,
+          children: [
+            {
+              tabs: [
+                {
+                  id: 'hierarchy',
+                  title: 'Hierarchy',
+                  content: <PanelTab panelType={PanelType.Hierarchy} />,
+                  closable: false
+                }
+              ]
+            }
+          ]
+        },
+        // Center panel group
+        {
+          mode: 'vertical',
+          children: [
+            {
+              tabs: [
+                {
+                  id: 'scene-view',
+                  title: 'Scene',
+                  content: <PanelTab panelType={PanelType.SceneView} />,
+                  closable: false
+                }
+              ]
+            },
+            // Bottom panels (Assets & Console)
+            {
+              size: 250,
+              tabs: [
+                {
+                  id: 'asset-browser',
+                  title: 'Assets',
+                  content: <PanelTab panelType={PanelType.AssetBrowser} />,
+                  closable: false
+                },
+                {
+                  id: 'console',
+                  title: 'Console',
+                  content: <PanelTab panelType={PanelType.Console} />,
+                  closable: false
+                }
+              ]
+            }
+          ]
+        },
+        // Right panel group
+        {
+          mode: 'vertical',
+          size: 300,
+          children: [
+            {
+              tabs: [
+                {
+                  id: 'inspector',
+                  title: 'Inspector',
+                  content: <PanelTab panelType={PanelType.Inspector} />,
+                  closable: false
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }), []);
 
-  // Handle layout change
-  const handleLayoutChange = useCallback((newLayout: Layout[]) => {
-    // Update panel positions in store
-    const updatedPanels = layout.panels.map(panel => {
-      const layoutItem = newLayout.find(item => item.i === panel.id);
-      if (layoutItem) {
-        return {
-          ...panel,
-          gridPosition: {
-            x: layoutItem.x,
-            y: layoutItem.y,
-            w: layoutItem.w,
-            h: layoutItem.h
-          }
-        };
-      }
-      return panel;
-    });
-
-    updateLayout({ panels: updatedPanels });
-  }, [layout.panels, updateLayout]);
-
-  // Handle panel close
-  const handlePanelClose = useCallback((panelId: string) => {
-    togglePanelVisibility(panelId);
-  }, [togglePanelVisibility]);
 
   return (
     <div 
-      style={{ 
-        height: '100%', 
+      style={{
+        height: '100%',
         width: '100%',
         backgroundColor: theme.colors.background,
-        ...style 
+        ...style
       }}
       className={className}
     >
-      <ResponsiveGridLayout
-        className="layout"
-        layouts={gridLayouts}
-        breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-        cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
-        rowHeight={50}
-        margin={[16, 16]}
-        containerPadding={[16, 16]}
-        onLayoutChange={handleLayoutChange}
-        isDraggable={true}
-        isResizable={true}
-        draggableHandle=".drag-handle"
-        useCSSTransforms={true}
-        preventCollision={false}
-        compactType="vertical"
-        style={{ backgroundColor: theme.colors.background }}
-      >
-        {layout.panels
-          .filter(panel => panel.visible)
-          .map(panel => (
-            <div key={panel.id}>
-              <PanelWrapper
-                title={panel.title}
-                onClose={panel.closeable !== false ? () => handlePanelClose(panel.id) : null}
-                theme={theme}
-              >
-                {renderPanelContent(panel.type)}
-              </PanelWrapper>
-            </div>
-          ))
+      <style>{`
+        /* Custom rc-dock theming */
+        .dock {
+          background: ${theme.colors.background} !important;
+          color: ${theme.colors.text} !important;
         }
-      </ResponsiveGridLayout>
+        
+        .dock-layout {
+          background: ${theme.colors.background} !important;
+        }
+        
+        .dock-panel {
+          background: ${theme.colors.surface} !important;
+          border: 1px solid ${theme.colors.border} !important;
+          border-radius: 6px !important;
+        }
+        
+        .dock-panel * {
+          background: transparent !important;
+        }
+        
+        .dock-bar {
+          background: ${theme.colors.surface} !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+        
+        .dock-tabs {
+          background: ${theme.colors.surface} !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+        
+        .dock-tab-pane {
+          background: ${theme.colors.background} !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        
+        .dock-content {
+          background: ${theme.colors.background} !important;
+        }
+        
+        .dock-tab {
+          background: ${theme.colors.surface} !important;
+          color: ${theme.colors.text} !important;
+          border: none !important;
+          border-radius: 0 !important;
+          position: relative !important;
+          padding: 0 20px 0 8px !important;
+          margin: 0 8px 0 0 !important;
+          min-width: 80px !important;
+          height: 32px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          font-size: 13px !important;
+          font-weight: 500 !important;
+          transition: all 0.2s ease !important;
+        }
+        
+        .dock-tab::before {
+          content: '' !important;
+          position: absolute !important;
+          left: 0 !important;
+          top: 0 !important;
+          bottom: 0 !important;
+          width: 3px !important;
+          background: transparent !important;
+          transition: all 0.2s ease !important;
+        }
+        
+        .dock-tab:hover {
+          background: rgba(255, 255, 255, 0.05) !important;
+        }
+        
+        .dock-tab:hover::before {
+          background: ${theme.colors.primary} !important;
+          opacity: 0.6 !important;
+        }
+        
+        .dock-tab.dock-tab-active {
+          background: ${theme.colors.background} !important;
+          color: ${theme.colors.text} !important;
+          border-bottom: none !important;
+        }
+        
+        .dock-tab.dock-tab-active::before {
+          background: ${theme.colors.primary} !important;
+          opacity: 1 !important;
+        }
+        
+        .dock-tab-content {
+          background: ${theme.colors.background} !important;
+          padding: 0 !important;
+        }
+        
+        .dock-divider {
+          background: ${theme.colors.border} !important;
+          opacity: 1;
+          border: 1px solid ${theme.colors.textSecondary} !important;
+          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+        }
+        
+        .dock-divider:hover {
+          background: ${theme.colors.primary} !important;
+          opacity: 1;
+          box-shadow: 0 0 4px rgba(24, 144, 255, 0.3) !important;
+        }
+        
+        .dock-divider-horizontal {
+          height: 6px !important;
+          cursor: ns-resize !important;
+          border-radius: 3px !important;
+        }
+        
+        .dock-divider-vertical {
+          width: 6px !important;
+          cursor: ew-resize !important;
+          border-radius: 3px !important;
+        }
+        
+        .dock-nav {
+          background: ${theme.colors.surface} !important;
+          border-bottom: none !important;
+          padding: 0 !important;
+        }
+        
+        .dock-nav-list {
+          background: ${theme.colors.surface} !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+        
+        .dock-nav-wrap {
+          background: ${theme.colors.surface} !important;
+        }
+        
+        .dock-nav-operations {
+          background: ${theme.colors.surface} !important;
+        }
+        
+        .dock-nav-tabs-content {
+          background: ${theme.colors.surface} !important;
+        }
+        
+        .dock-nav-add {
+          background: ${theme.colors.surface} !important;
+        }
+        
+        .dock-ink-bar {
+          display: none !important;
+        }
+        
+        .dock-tab-close-btn {
+          display: none !important;
+        }
+        
+        .dock-panel-content {
+          background: ${theme.colors.background} !important;
+          height: 100% !important;
+          overflow: hidden !important;
+        }
+      `}</style>
+      <RCDockLayout 
+        defaultLayout={dockLayoutData}
+        style={{ height: '100%' }}
+      />
     </div>
   );
 };

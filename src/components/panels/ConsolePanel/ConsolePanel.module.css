@@ -1,0 +1,60 @@
+/* Console panel specific styles */
+.console-message {
+  margin-bottom: 4px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  border-left: 3px solid;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+.console-message.error {
+  background-color: rgba(255, 77, 79, 0.1);
+  border-left-color: #ff4d4f;
+}
+
+.console-message.warn {
+  background-color: rgba(250, 173, 20, 0.1);
+  border-left-color: #faad14;
+}
+
+.console-message.info {
+  background-color: rgba(24, 144, 255, 0.1);
+  border-left-color: #1890ff;
+}
+
+.console-message.log {
+  border-left-color: #666;
+}
+
+.console-timestamp {
+  font-size: 10px;
+  opacity: 0.7;
+  margin-bottom: 2px;
+}
+
+.console-content {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.console-scrollable {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+.console-scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+
+.console-scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.console-scrollable::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.console-scrollable::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.5);
+}

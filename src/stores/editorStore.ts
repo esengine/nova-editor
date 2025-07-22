@@ -193,7 +193,7 @@ const defaultLayout: LayoutConfig = {
       type: PanelType.Console,
       title: 'Console',
       icon: 'console-sql',
-      visible: false,
+      visible: true,
       dockable: true,
       closeable: true,
       minWidth: 400,

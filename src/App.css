@@ -30,8 +30,8 @@ body {
 }
 
 .ant-layout-header {
-  height: 48px !important;
-  line-height: 48px !important;
+  height: 40px !important;
+  line-height: 40px !important;
 }
 
 .ant-layout-content {
@@ -40,6 +40,14 @@ body {
 
 .ant-layout-footer {
   padding: 12px 24px !important;
+}
+
+/* Fix menu dropdown link styles */
+.ant-dropdown-link {
+  display: inline-block !important;
+  line-height: 1.2 !important;
+  vertical-align: middle !important;
+  box-sizing: border-box !important;
 }
 
 /* Custom scrollbar styles */
@@ -104,4 +112,27 @@ body {
 
 .gap-lg {
   gap: 24px;
+}
+
+/* Gradient animation for Nova Editor title */
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Nova Editor title styles */
+.nova-editor-title {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 200% 200%;
+  animation: gradient-shift 4s ease infinite;
 }
