@@ -16,6 +16,7 @@ import {
   DeleteOutlined
 } from '@ant-design/icons';
 import { useEditorStore } from '../../stores/editorStore';
+import { FileSystemService } from '../../services/FileSystemService';
 
 export interface EditorToolbarProps {
   style?: React.CSSProperties;
@@ -35,6 +36,8 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   const selectedEntities = useEditorStore(state => state.selection.selectedEntities);
   const removeEntity = useEditorStore(state => state.removeEntity);
   const theme = useEditorStore(state => state.theme);
+  
+  const fileSystemService = FileSystemService.getInstance();
 
   const handleUndo = () => {
     undo();
@@ -52,6 +55,34 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
     selectedEntities.forEach(entityId => {
       removeEntity(entityId);
     });
+  };
+
+  const handleNewProject = async () => {
+    try {
+      const projectName = prompt('Enter project name:') || 'New Project';
+      const project = await fileSystemService.createNewProject(projectName);
+      console.log('Created new project:', project);
+    } catch (error) {
+      console.error('Failed to create project:', error);
+    }
+  };
+
+  const handleOpenProject = async () => {
+    try {
+      const project = await fileSystemService.openProject();
+      console.log('Opened project:', project);
+    } catch (error) {
+      console.error('Failed to open project:', error);
+    }
+  };
+
+  const handleSaveProject = async () => {
+    try {
+      await fileSystemService.saveAllFiles();
+      console.log('Saved all files');
+    } catch (error) {
+      console.error('Failed to save project:', error);
+    }
   };
 
   const getUndoTooltip = () => {
@@ -84,6 +115,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           <Button
             icon={<FileAddOutlined />}
             size="small"
+            onClick={handleNewProject}
           />
         </Tooltip>
         
@@ -91,6 +123,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           <Button
             icon={<FolderOpenOutlined />}
             size="small"
+            onClick={handleOpenProject}
           />
         </Tooltip>
         
@@ -98,6 +131,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           <Button
             icon={<SaveOutlined />}
             size="small"
+            onClick={handleSaveProject}
           />
         </Tooltip>
       </Space>

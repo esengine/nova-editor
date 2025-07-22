@@ -16,7 +16,7 @@ import {
   CloseOutlined
 } from '@ant-design/icons';
 import { useEditorStore } from '../../../stores/editorStore';
-import { FileSystemService, type EditorFile } from '../../../services/FileSystemService';
+import { FileSystemService, type ProjectFile } from '../../../services/FileSystemService';
 
 
 /**
@@ -36,7 +36,7 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
   const editorTheme = 'vs-dark';
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fileTabs, setFileTabs] = useState<any[]>([]);
-  const [activeFile, setActiveFile] = useState<EditorFile | null>(null);
+  const [activeFile, setActiveFile] = useState<ProjectFile | null>(null);
   const [showNewFileModal, setShowNewFileModal] = useState(false);
   const [newFileName, setNewFileName] = useState('');
   
@@ -201,7 +201,15 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
 
   const handleOpenFile = useCallback(async (file: File) => {
     try {
-      await fileService.current.openFile(file);
+      // For browser File objects, we need to convert to a file handle-like structure
+      // This is a fallback for when File System Access API is not available
+      const fileName = file.name;
+      const content = await file.text();
+      
+      // Create a new file in the current project
+      const newFile = await fileService.current.createFile(fileName);
+      fileService.current.updateFile(newFile.id, content);
+      
       updateFileTabs();
       message.success(`${file.name} opened successfully`);
     } catch (error) {
