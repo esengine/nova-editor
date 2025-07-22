@@ -1,15 +1,22 @@
 /**
- * Editor toolbar with panel management and workspace controls
- * 编辑器工具栏，包含面板管理和工作区控制
+ * Main Editor Toolbar with undo/redo and other global actions
+ * 主编辑器工具栏，包含撤销/重做和其他全局操作
  */
 
 import React from 'react';
+import { Button, Space, Tooltip, Divider } from 'antd';
+import {
+  UndoOutlined,
+  RedoOutlined,
+  SaveOutlined,
+  FolderOpenOutlined,
+  PlayCircleOutlined,
+  PauseCircleOutlined,
+  FileAddOutlined,
+  DeleteOutlined
+} from '@ant-design/icons';
+import { useEditorStore } from '../../stores/editorStore';
 
-
-/**
- * Main editor toolbar component
- * 主编辑器工具栏组件
- */
 export interface EditorToolbarProps {
   style?: React.CSSProperties;
   className?: string;
@@ -19,15 +26,152 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   style,
   className
 }) => {
+  const canUndo = useEditorStore(state => state.canUndo);
+  const canRedo = useEditorStore(state => state.canRedo);
+  const commandManager = useEditorStore(state => state.commandManager);
+  const undo = useEditorStore(state => state.undo);
+  const redo = useEditorStore(state => state.redo);
+  const createEntity = useEditorStore(state => state.createEntity);
+  const selectedEntities = useEditorStore(state => state.selection.selectedEntities);
+  const removeEntity = useEditorStore(state => state.removeEntity);
+  const theme = useEditorStore(state => state.theme);
+
+  const handleUndo = () => {
+    undo();
+  };
+
+  const handleRedo = () => {
+    redo();
+  };
+
+  const handleCreateEntity = () => {
+    createEntity();
+  };
+
+  const handleDeleteSelected = () => {
+    selectedEntities.forEach(entityId => {
+      removeEntity(entityId);
+    });
+  };
+
+  const getUndoTooltip = () => {
+    const undoCommand = commandManager.getUndoCommand();
+    return undoCommand ? `Undo ${undoCommand.name}` : 'Nothing to undo';
+  };
+
+  const getRedoTooltip = () => {
+    const redoCommand = commandManager.getRedoCommand();
+    return redoCommand ? `Redo ${redoCommand.name}` : 'Nothing to redo';
+  };
 
   return (
-    <div 
+    <div
       style={{
-        display: 'none', // Hide the toolbar completely
+        display: 'flex',
+        alignItems: 'center',
+        padding: '8px 16px',
+        height: '44px',
+        backgroundColor: theme.colors.surface,
+        borderBottom: `1px solid ${theme.colors.border}`,
+        gap: '8px',
         ...style
       }}
       className={className}
     >
+      {/* File Operations */}
+      <Space size="small">
+        <Tooltip title="New Project">
+          <Button
+            icon={<FileAddOutlined />}
+            size="small"
+          />
+        </Tooltip>
+        
+        <Tooltip title="Open Project">
+          <Button
+            icon={<FolderOpenOutlined />}
+            size="small"
+          />
+        </Tooltip>
+        
+        <Tooltip title="Save Project">
+          <Button
+            icon={<SaveOutlined />}
+            size="small"
+          />
+        </Tooltip>
+      </Space>
+
+      <Divider type="vertical" />
+
+      {/* Undo/Redo */}
+      <Space size="small">
+        <Tooltip title={getUndoTooltip()}>
+          <Button
+            icon={<UndoOutlined />}
+            size="small"
+            disabled={!canUndo}
+            onClick={handleUndo}
+          />
+        </Tooltip>
+        
+        <Tooltip title={getRedoTooltip()}>
+          <Button
+            icon={<RedoOutlined />}
+            size="small"
+            disabled={!canRedo}
+            onClick={handleRedo}
+          />
+        </Tooltip>
+      </Space>
+
+      <Divider type="vertical" />
+
+      {/* Entity Operations */}
+      <Space size="small">
+        <Tooltip title="Create Entity">
+          <Button
+            icon={<FileAddOutlined />}
+            size="small"
+            onClick={handleCreateEntity}
+          />
+        </Tooltip>
+        
+        <Tooltip title={`Delete Selected (${selectedEntities.length} selected)`}>
+          <Button
+            icon={<DeleteOutlined />}
+            size="small"
+            disabled={selectedEntities.length === 0}
+            onClick={handleDeleteSelected}
+            danger={selectedEntities.length > 0}
+          />
+        </Tooltip>
+      </Space>
+
+      <Divider type="vertical" />
+
+      {/* Playback Controls */}
+      <Space size="small">
+        <Tooltip title="Play">
+          <Button
+            icon={<PlayCircleOutlined />}
+            size="small"
+            type="primary"
+          />
+        </Tooltip>
+        
+        <Tooltip title="Pause">
+          <Button
+            icon={<PauseCircleOutlined />}
+            size="small"
+          />
+        </Tooltip>
+      </Space>
+
+      {/* Command History Info */}
+      <div style={{ marginLeft: 'auto', fontSize: '12px', color: theme.colors.textSecondary }}>
+        History: {commandManager.getHistoryInfo().totalCommands} commands
+      </div>
     </div>
   );
 };

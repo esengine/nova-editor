@@ -24,6 +24,7 @@ import {
 } from '../types';
 import { EditorWorld, EditorStoreIntegration } from '../ecs';
 import { workspaceService } from '../services/WorkspaceService';
+import { CommandManager, CreateEntityCommand, DeleteEntityCommand } from '../core/commands';
 import type { EntityId } from '@esengine/nova-ecs';
 
 /**
@@ -60,6 +61,11 @@ interface EditorState {
   // UI state | UI状态
   isLoading: boolean;
   activePanel: PanelType | null;
+  
+  // Command system | 命令系统
+  commandManager: CommandManager;
+  canUndo: boolean;
+  canRedo: boolean;
   
   // Event system | 事件系统
   events: EditorEvent[];
@@ -129,6 +135,12 @@ interface EditorActions {
   searchAssets: (query: string) => void;
   filterAssetsByType: (type: AssetType | null) => void;
   sortAssets: (by: 'name' | 'type' | 'size' | 'date', order: 'asc' | 'desc') => void;
+  
+  // Command system actions | 命令系统操作
+  executeCommand: (command: any) => Promise<void>;
+  undo: () => Promise<void>;
+  redo: () => Promise<void>;
+  clearCommandHistory: () => void;
   
   // Workspace actions | 工作区操作
   saveWorkspace: () => void;
@@ -349,6 +361,16 @@ export const useEditorStore = create<EditorState & EditorActions>()(
       theme: initialWorkspace.theme,
       isLoading: false,
       activePanel: null,
+      
+      // Command system state | 命令系统状态
+      commandManager: new CommandManager({
+        maxHistorySize: 50,
+        autoMerge: true,
+        mergeTimeWindow: 1000
+      }),
+      canUndo: false,
+      canRedo: false,
+      
       events: [],
       forceUpdateTrigger: 0,
 
@@ -525,19 +547,32 @@ export const useEditorStore = create<EditorState & EditorActions>()(
       }),
 
       // Entity actions implementation
-      createEntity: (name?: string) => {
+      createEntity: async (name?: string) => {
         const state = get() as any;
-        const integration = state.world.instance?._integration;
-        if (integration) {
-          integration.getStoreActions().createEntity(name);
+        if (state.world.instance) {
+          const command = new CreateEntityCommand(state.world.instance, name);
+          await state.executeCommand(command);
+          set((state) => {
+            state.forceUpdateTrigger++;
+          });
         }
       },
 
-      removeEntity: (entityId: EntityId) => {
+      removeEntity: async (entityId: EntityId) => {
         const state = get() as any;
-        const integration = state.world.instance?._integration;
-        if (integration) {
-          integration.getStoreActions().removeEntity(entityId);
+        if (state.world.instance) {
+          const command = new DeleteEntityCommand(state.world.instance, entityId);
+          await state.executeCommand(command);
+          set((state) => {
+            state.forceUpdateTrigger++;
+            // Clear selection if the removed entity was selected
+            state.selection.selectedEntities = state.selection.selectedEntities.filter(
+              (id: EntityId) => id !== entityId
+            );
+            if (state.selection.primarySelection === entityId) {
+              state.selection.primarySelection = null;
+            }
+          });
         }
       },
 
@@ -624,6 +659,48 @@ export const useEditorStore = create<EditorState & EditorActions>()(
       sortAssets: (by, order) => set((state) => {
         state.assetBrowser.sortBy = by;
         state.assetBrowser.sortOrder = order;
+      }),
+
+      // Command system actions implementation
+      executeCommand: async (command) => {
+        const state = get();
+        const result = await state.commandManager.executeCommand(command);
+        if (result.success) {
+          set((state) => {
+            state.canUndo = state.commandManager.canUndo();
+            state.canRedo = state.commandManager.canRedo();
+          });
+        }
+      },
+
+      undo: async () => {
+        const state = get();
+        const result = await state.commandManager.undo();
+        if (result.success) {
+          set((state) => {
+            state.canUndo = state.commandManager.canUndo();
+            state.canRedo = state.commandManager.canRedo();
+            state.forceUpdateTrigger++;
+          });
+        }
+      },
+
+      redo: async () => {
+        const state = get();
+        const result = await state.commandManager.redo();
+        if (result.success) {
+          set((state) => {
+            state.canUndo = state.commandManager.canUndo();
+            state.canRedo = state.commandManager.canRedo();
+            state.forceUpdateTrigger++;
+          });
+        }
+      },
+
+      clearCommandHistory: () => set((state) => {
+        state.commandManager.clearHistory();
+        state.canUndo = false;
+        state.canRedo = false;
       }),
 
       // Workspace actions implementation
