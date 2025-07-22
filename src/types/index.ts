@@ -186,6 +186,12 @@ export interface SelectionState {
 }
 
 /**
+ * Transform mode for gizmo controls
+ * 操作手柄的变换模式
+ */
+export type TransformMode = 'translate' | 'rotate' | 'scale';
+
+/**
  * Editor viewport state
  * 编辑器视口状态
  */
@@ -202,6 +208,8 @@ export interface ViewportState {
   showGrid: boolean;
   /** Whether gizmos are visible | 操作手柄是否可见 */
   showGizmos: boolean;
+  /** Current transform mode | 当前变换模式 */
+  transformMode: TransformMode;
 }
 
 /**

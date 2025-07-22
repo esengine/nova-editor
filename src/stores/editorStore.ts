@@ -14,7 +14,8 @@ import type {
   ThemeConfig,
   EditorEvent,
   PanelConfig,
-  WorldState
+  WorldState,
+  TransformMode
 } from '../types';
 import type { AssetBrowserState, AssetType } from '../types/AssetTypes';
 import {
@@ -93,6 +94,7 @@ interface EditorActions {
   setZoom: (zoom: number) => void;
   toggleGrid: () => void;
   toggleGizmos: () => void;
+  setTransformMode: (mode: TransformMode) => void;
   
   // World actions | 世界操作
   initializeWorld: () => void;
@@ -329,7 +331,8 @@ export const useEditorStore = create<EditorState & EditorActions>()(
         zoom: 1,
         size: { x: 800, y: 600 },
         showGrid: true,
-        showGizmos: true
+        showGizmos: true,
+        transformMode: 'translate' as TransformMode
       },
       assetBrowser: {
         currentFolderId: 'root',
@@ -448,6 +451,10 @@ export const useEditorStore = create<EditorState & EditorActions>()(
 
       toggleGizmos: () => set((state) => {
         state.viewport.showGizmos = !state.viewport.showGizmos;
+      }),
+
+      setTransformMode: (mode) => set((state) => {
+        state.viewport.transformMode = mode;
       }),
 
       setTheme: (theme) => set((state) => {

@@ -11,10 +11,14 @@ import * as THREE from 'three';
 import {
   BorderOutlined,
   CompressOutlined,
-  SettingOutlined
+  SettingOutlined,
+  DragOutlined,
+  ReloadOutlined,
+  ExpandOutlined
 } from '@ant-design/icons';
 import { useEditorStore } from '../../../stores/editorStore';
 import { TransformComponent, MeshRendererComponent, EditorMetadataComponent } from '../../../ecs';
+import type { TransformMode } from '../../../types';
 
 /**
  * Entity with transform controls
@@ -29,6 +33,7 @@ interface EntityObjectProps {
   geometryType: string;
   isSelected: boolean;
   hasRenderer: boolean;
+  transformMode: TransformMode;
   onSelect: (id: number) => void;
   onTransformChange: (id: number, transform: any) => void;
   onDraggingChange?: (isDragging: boolean) => void;
@@ -43,6 +48,7 @@ const EntityObject: React.FC<EntityObjectProps> = ({
   geometryType,
   isSelected,
   hasRenderer,
+  transformMode,
   onSelect,
   onTransformChange,
   onDraggingChange
@@ -130,7 +136,7 @@ const EntityObject: React.FC<EntityObjectProps> = ({
         <TransformControls
           ref={transformRef}
           object={mesh}
-          mode="translate"
+          mode={transformMode}
           onMouseDown={handleDragStart}
           onMouseUp={handleDragEnd}
         />
@@ -156,6 +162,7 @@ const SceneObjects: React.FC<SceneContentProps> = ({ onDraggingChange }) => {
   const selectEntity = useEditorStore(state => state.selectEntity);
   const updateComponentProperty = useEditorStore(state => state.updateComponentProperty);
   const forceUpdateTrigger = useEditorStore(state => state.forceUpdateTrigger);
+  const transformMode = useEditorStore(state => state.viewport.transformMode);
   
   // Force re-render when components change
   const [, forceUpdate] = React.useState({});
@@ -218,6 +225,7 @@ const SceneObjects: React.FC<SceneContentProps> = ({ onDraggingChange }) => {
             geometryType={obj.geometryType}
             isSelected={isSelected}
             hasRenderer={obj.hasRenderer}
+            transformMode={transformMode}
             onSelect={selectEntity}
             onTransformChange={handleTransformChange}
             onDraggingChange={onDraggingChange}
@@ -262,8 +270,10 @@ const CameraController: React.FC = () => {
 const SceneViewControls: React.FC = () => {
   const showGrid = useEditorStore(state => state.viewport.showGrid);
   const showGizmos = useEditorStore(state => state.viewport.showGizmos);
+  const transformMode = useEditorStore(state => state.viewport.transformMode);
   const toggleGrid = useEditorStore(state => state.toggleGrid);
   const toggleGizmos = useEditorStore(state => state.toggleGizmos);
+  const setTransformMode = useEditorStore(state => state.setTransformMode);
 
   return (
     <div style={{
@@ -276,6 +286,35 @@ const SceneViewControls: React.FC = () => {
       padding: '4px'
     }}>
       <Space>
+        {/* Transform Mode Controls */}
+        <Space.Compact>
+          <Tooltip title="Move Tool (W)">
+            <Button
+              type={transformMode === 'translate' ? 'primary' : 'default'}
+              size="small"
+              icon={<DragOutlined />}
+              onClick={() => setTransformMode('translate')}
+            />
+          </Tooltip>
+          <Tooltip title="Rotate Tool (E)">
+            <Button
+              type={transformMode === 'rotate' ? 'primary' : 'default'}
+              size="small"
+              icon={<ReloadOutlined />}
+              onClick={() => setTransformMode('rotate')}
+            />
+          </Tooltip>
+          <Tooltip title="Scale Tool (R)">
+            <Button
+              type={transformMode === 'scale' ? 'primary' : 'default'}
+              size="small"
+              icon={<ExpandOutlined />}
+              onClick={() => setTransformMode('scale')}
+            />
+          </Tooltip>
+        </Space.Compact>
+        
+        {/* View Controls */}
         <Tooltip title="Toggle Grid">
           <Button
             type={showGrid ? 'primary' : 'default'}
@@ -338,6 +377,7 @@ export const SceneViewPanel: React.FC<SceneViewPanelProps> = ({
   const showGrid = useEditorStore(state => state.viewport.showGrid);
   const showGizmos = useEditorStore(state => state.viewport.showGizmos);
   const clearSelection = useEditorStore(state => state.clearSelection);
+  const setTransformMode = useEditorStore(state => state.setTransformMode);
   const worldStats = useEditorStore(state => state.world.stats);
   const [isDragging, setIsDragging] = React.useState(false);
   const [renderStats, setRenderStats] = React.useState({ fps: 0, frameTime: 0 });
@@ -368,6 +408,34 @@ export const SceneViewPanel: React.FC<SceneViewPanelProps> = ({
     const frame = requestAnimationFrame(updateRenderStats);
     return () => cancelAnimationFrame(frame);
   }, []);
+
+  // Handle keyboard shortcuts for transform modes
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle if no modifier keys are pressed and target is not an input
+      if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+      if ((event.target as HTMLElement)?.tagName === 'INPUT' || 
+          (event.target as HTMLElement)?.tagName === 'TEXTAREA') return;
+
+      switch (event.key.toLowerCase()) {
+        case 'w':
+          event.preventDefault();
+          setTransformMode('translate');
+          break;
+        case 'e':
+          event.preventDefault();
+          setTransformMode('rotate');
+          break;
+        case 'r':
+          event.preventDefault();
+          setTransformMode('scale');
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [setTransformMode]);
 
   return (
     <div 
