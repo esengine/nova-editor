@@ -199,6 +199,18 @@ const defaultLayout: LayoutConfig = {
       minWidth: 400,
       minHeight: 150,
       gridPosition: { x: 0, y: 12, w: 12, h: 3 }
+    },
+    {
+      id: 'code-editor',
+      type: PanelType.CodeEditor,
+      title: 'Code Editor',
+      icon: 'code',
+      visible: false,
+      dockable: true,
+      closeable: true,
+      minWidth: 500,
+      minHeight: 300,
+      gridPosition: { x: 3, y: 8, w: 6, h: 4 }
     }
   ],
   grid: {
@@ -243,6 +255,28 @@ const defaultTheme: ThemeConfig = {
 };
 
 /**
+ * Merge saved workspace with default to ensure new panels are included
+ * 合并保存的工作区配置和默认配置以确保包含新面板
+ */
+const mergeWorkspaceWithDefaults = (savedLayout: LayoutConfig): LayoutConfig => {
+  const mergedPanels = [...defaultLayout.panels];
+  
+  // Update existing panels with saved state
+  savedLayout.panels.forEach(savedPanel => {
+    const existingIndex = mergedPanels.findIndex(p => p.id === savedPanel.id);
+    if (existingIndex >= 0) {
+      mergedPanels[existingIndex] = { ...mergedPanels[existingIndex], ...savedPanel };
+    }
+  });
+  
+  return {
+    ...defaultLayout,
+    ...savedLayout,
+    panels: mergedPanels
+  };
+};
+
+/**
  * Load workspace configuration or use defaults
  * 加载工作区配置或使用默认值
  */
@@ -250,7 +284,7 @@ const loadInitialWorkspace = () => {
   const savedWorkspace = workspaceService.loadWorkspace();
   if (savedWorkspace) {
     return {
-      layout: savedWorkspace.layout,
+      layout: mergeWorkspaceWithDefaults(savedWorkspace.layout),
       theme: savedWorkspace.theme
     };
   }

@@ -12,6 +12,7 @@ import { SceneViewPanel } from '../panels/SceneViewPanel';
 import { InspectorPanel } from '../panels/InspectorPanel';
 import { AssetBrowserPanel } from '../panels/AssetBrowserPanel';
 import { ConsolePanel } from '../panels/ConsolePanel';
+import { CodeEditorPanel } from '../panels/CodeEditorPanel';
 import 'rc-dock/dist/rc-dock.css';
 
 /**
@@ -30,6 +31,8 @@ const renderPanelContent = (panelType: PanelType): React.ReactNode => {
       return <AssetBrowserPanel />;
     case PanelType.Console:
       return <ConsolePanel />;
+    case PanelType.CodeEditor:
+      return <CodeEditorPanel />;
     default:
       return <div style={{ padding: '16px', color: '#666' }}>Unknown panel type</div>;
   }
@@ -59,83 +62,107 @@ export const DockLayout: React.FC<DockLayoutProps> = ({
   className
 }) => {
   const theme = useEditorStore(state => state.theme);
+  const layout = useEditorStore(state => state.layout);
+  const visiblePanels = layout.panels.filter(panel => panel.visible);
 
   // Create dock layout data structure
-  const dockLayoutData: LayoutData = React.useMemo(() => ({
-    dockbox: {
-      mode: 'horizontal',
-      children: [
-        // Left panel group
-        {
-          mode: 'vertical',
-          size: 300,
-          children: [
-            {
-              tabs: [
-                {
-                  id: 'hierarchy',
-                  title: 'Hierarchy',
-                  content: <PanelTab panelType={PanelType.Hierarchy} />,
-                  closable: false
-                }
-              ]
-            }
-          ]
-        },
-        // Center panel group
-        {
-          mode: 'vertical',
-          children: [
-            {
-              tabs: [
-                {
-                  id: 'scene-view',
-                  title: 'Scene',
-                  content: <PanelTab panelType={PanelType.SceneView} />,
-                  closable: false
-                }
-              ]
-            },
-            // Bottom panels (Assets & Console)
-            {
-              size: 250,
-              tabs: [
-                {
-                  id: 'asset-browser',
-                  title: 'Assets',
-                  content: <PanelTab panelType={PanelType.AssetBrowser} />,
-                  closable: false
-                },
-                {
-                  id: 'console',
-                  title: 'Console',
-                  content: <PanelTab panelType={PanelType.Console} />,
-                  closable: false
-                }
-              ]
-            }
-          ]
-        },
-        // Right panel group
-        {
-          mode: 'vertical',
-          size: 300,
-          children: [
-            {
-              tabs: [
-                {
-                  id: 'inspector',
-                  title: 'Inspector',
-                  content: <PanelTab panelType={PanelType.Inspector} />,
-                  closable: false
-                }
-              ]
-            }
-          ]
-        }
-      ]
+  const dockLayoutData: LayoutData = React.useMemo(() => {
+    const centerPanelTabs = [];
+    const bottomPanelTabs = [];
+    
+    // Always add Scene View to center
+    centerPanelTabs.push({
+      id: 'scene-view',
+      title: 'Scene',
+      content: <PanelTab panelType={PanelType.SceneView} />,
+      closable: false
+    });
+    
+    // Add Code Editor to center tabs if visible
+    if (visiblePanels.find(p => p.id === 'code-editor')) {
+      centerPanelTabs.push({
+        id: 'code-editor',
+        title: 'Code Editor',
+        content: <PanelTab panelType={PanelType.CodeEditor} />,
+        closable: false
+      });
     }
-  }), []);
+    
+    // Add visible bottom panels
+    if (visiblePanels.find(p => p.id === 'asset-browser')) {
+      bottomPanelTabs.push({
+        id: 'asset-browser',
+        title: 'Assets',
+        content: <PanelTab panelType={PanelType.AssetBrowser} />,
+        closable: false
+      });
+    }
+    
+    if (visiblePanels.find(p => p.id === 'console')) {
+      bottomPanelTabs.push({
+        id: 'console',
+        title: 'Console',
+        content: <PanelTab panelType={PanelType.Console} />,
+        closable: false
+      });
+    }
+
+    return {
+      dockbox: {
+        mode: 'horizontal',
+        children: [
+          // Left panel group
+          {
+            mode: 'vertical',
+            size: 300,
+            children: [
+              {
+                tabs: [
+                  {
+                    id: 'hierarchy',
+                    title: 'Hierarchy',
+                    content: <PanelTab panelType={PanelType.Hierarchy} />,
+                    closable: false
+                  }
+                ]
+              }
+            ]
+          },
+          // Center panel group
+          {
+            mode: 'vertical',
+            children: [
+              {
+                tabs: centerPanelTabs
+              },
+              // Bottom panels (conditionally rendered)
+              ...(bottomPanelTabs.length > 0 ? [{
+                size: 250,
+                tabs: bottomPanelTabs
+              }] : [])
+            ]
+          },
+          // Right panel group
+          {
+            mode: 'vertical',
+            size: 300,
+            children: [
+              {
+                tabs: [
+                  {
+                    id: 'inspector',
+                    title: 'Inspector',
+                    content: <PanelTab panelType={PanelType.Inspector} />,
+                    closable: false
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    };
+  }, [visiblePanels]);
 
 
   return (
@@ -313,6 +340,7 @@ export const DockLayout: React.FC<DockLayoutProps> = ({
         }
       `}</style>
       <RCDockLayout 
+        key={`dock-layout-${visiblePanels.map(p => p.id).join('-')}`}
         defaultLayout={dockLayoutData}
         style={{ height: '100%' }}
       />
