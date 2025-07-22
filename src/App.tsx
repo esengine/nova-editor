@@ -7,10 +7,8 @@ import React from 'react';
 import { ConfigProvider, Layout, theme, App as AntdApp } from 'antd';
 import { useEditorStore } from './stores/editorStore';
 import { useEditorWorld } from './hooks/useEditorWorld';
-import { HierarchyPanel } from './components/panels/HierarchyPanel';
-import { SceneViewPanel } from './components/panels/SceneViewPanel';
-import { InspectorPanel } from './components/panels/InspectorPanel';
-import { AssetBrowserPanel } from './components/panels/AssetBrowserPanel';
+import { DockLayout } from './components/layout';
+import { EditorToolbar } from './components/toolbar';
 import './App.css';
 
 const { Header, Content, Footer } = Layout;
@@ -46,148 +44,42 @@ function App(): React.ReactElement {
       <AntdApp>
         <Layout style={{ minHeight: '100vh' }}>
         <Header style={{
-          padding: '0 16px',
+          padding: '0',
           background: editorTheme.colors.surface,
           borderBottom: `1px solid ${editorTheme.colors.border}`,
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
+          flexDirection: 'column'
         }}>
+          {/* Main header */}
           <div style={{
-            color: editorTheme.colors.text,
-            fontSize: '18px',
-            fontWeight: 'bold'
+            padding: '0 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            height: '48px'
           }}>
-            Nova Editor
+            <div style={{
+              color: editorTheme.colors.text,
+              fontSize: '18px',
+              fontWeight: 'bold'
+            }}>
+              Nova Editor
+            </div>
+            <div style={{ color: editorTheme.colors.textSecondary }}>
+              {isLoading ? 'Loading...' : 'Ready'}
+            </div>
           </div>
-          <div style={{ color: editorTheme.colors.textSecondary }}>
-            {isLoading ? 'Loading...' : 'Ready'}
-          </div>
+          
+          {/* Toolbar */}
+          <EditorToolbar />
         </Header>
 
         <Content style={{
-          padding: '16px',
+          padding: '0',
           background: editorTheme.colors.background,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px',
           overflow: 'hidden'
         }}>
-          {/* Top Row - Main panels */}
-          <div style={{
-            flex: 1,
-            display: 'flex',
-            gap: '16px',
-            minHeight: 0
-          }}>
-            {/* Left Panel - Hierarchy */}
-            <div style={{
-              width: '300px',
-              minWidth: '250px',
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              <div style={{
-                marginBottom: '8px',
-                padding: '8px 12px',
-                background: editorTheme.colors.surface,
-                border: `1px solid ${editorTheme.colors.border}`,
-                borderRadius: '6px 6px 0 0',
-                borderBottom: 'none',
-                color: editorTheme.colors.text,
-                fontWeight: 'bold',
-                fontSize: '14px'
-              }}>
-                Hierarchy
-              </div>
-              <HierarchyPanel style={{ flex: 1, borderRadius: '0 0 6px 6px' }} />
-            </div>
-
-            {/* Center Panel - Scene View */}
-            <div style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              <div style={{
-                marginBottom: '8px',
-                padding: '8px 12px',
-                background: editorTheme.colors.surface,
-                border: `1px solid ${editorTheme.colors.border}`,
-                borderRadius: '6px 6px 0 0',
-                borderBottom: 'none',
-                color: editorTheme.colors.text,
-                fontWeight: 'bold',
-                fontSize: '14px'
-              }}>
-                Scene View
-              </div>
-              <SceneViewPanel 
-                style={{ 
-                  flex: 1,
-                  borderRadius: '0 0 6px 6px',
-                  border: `1px solid ${editorTheme.colors.border}`
-                }} 
-              />
-            </div>
-
-            {/* Right Panel - Inspector */}
-            <div style={{
-              width: '300px',
-              minWidth: '250px',
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              <div style={{
-                marginBottom: '8px',
-                padding: '8px 12px',
-                background: editorTheme.colors.surface,
-                border: `1px solid ${editorTheme.colors.border}`,
-                borderRadius: '6px 6px 0 0',
-                borderBottom: 'none',
-                color: editorTheme.colors.text,
-                fontWeight: 'bold',
-                fontSize: '14px'
-              }}>
-                Inspector
-              </div>
-              <InspectorPanel 
-                style={{ 
-                  flex: 1,
-                  borderRadius: '0 0 6px 6px',
-                  border: `1px solid ${editorTheme.colors.border}`
-                }} 
-              />
-            </div>
-          </div>
-
-          {/* Bottom Row - Asset Browser */}
-          <div style={{
-            height: '250px',
-            display: 'flex',
-            flexDirection: 'column'
-          }}>
-            <div style={{
-              marginBottom: '8px',
-              padding: '8px 12px',
-              background: editorTheme.colors.surface,
-              border: `1px solid ${editorTheme.colors.border}`,
-              borderRadius: '6px 6px 0 0',
-              borderBottom: 'none',
-              color: editorTheme.colors.text,
-              fontWeight: 'bold',
-              fontSize: '14px'
-            }}>
-              Assets
-            </div>
-            <AssetBrowserPanel 
-              style={{ 
-                flex: 1,
-                borderRadius: '0 0 6px 6px',
-                border: `1px solid ${editorTheme.colors.border}`
-              }} 
-            />
-          </div>
+          <DockLayout />
         </Content>
 
         <Footer style={{

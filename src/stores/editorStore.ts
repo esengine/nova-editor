@@ -22,6 +22,7 @@ import {
   PanelType
 } from '../types';
 import { EditorWorld, EditorStoreIntegration } from '../ecs';
+import { workspaceService } from '../services/WorkspaceService';
 import type { EntityId } from '@esengine/nova-ecs';
 
 /**
@@ -126,6 +127,11 @@ interface EditorActions {
   searchAssets: (query: string) => void;
   filterAssetsByType: (type: AssetType | null) => void;
   sortAssets: (by: 'name' | 'type' | 'size' | 'date', order: 'asc' | 'desc') => void;
+  
+  // Workspace actions | 工作区操作
+  saveWorkspace: () => void;
+  loadWorkspace: () => void;
+  resetWorkspace: () => void;
 }
 
 /**
@@ -141,8 +147,10 @@ const defaultLayout: LayoutConfig = {
       icon: 'apartment',
       visible: true,
       dockable: true,
+      closeable: false,
       minWidth: 200,
-      minHeight: 300
+      minHeight: 300,
+      gridPosition: { x: 0, y: 0, w: 3, h: 8 }
     },
     {
       id: 'scene-view',
@@ -151,8 +159,10 @@ const defaultLayout: LayoutConfig = {
       icon: 'eye',
       visible: true,
       dockable: true,
+      closeable: false,
       minWidth: 400,
-      minHeight: 300
+      minHeight: 300,
+      gridPosition: { x: 3, y: 0, w: 6, h: 8 }
     },
     {
       id: 'inspector',
@@ -161,8 +171,10 @@ const defaultLayout: LayoutConfig = {
       icon: 'setting',
       visible: true,
       dockable: true,
+      closeable: false,
       minWidth: 250,
-      minHeight: 300
+      minHeight: 300,
+      gridPosition: { x: 9, y: 0, w: 3, h: 8 }
     },
     {
       id: 'asset-browser',
@@ -171,25 +183,29 @@ const defaultLayout: LayoutConfig = {
       icon: 'folder',
       visible: true,
       dockable: true,
+      closeable: true,
       minWidth: 300,
-      minHeight: 200
+      minHeight: 200,
+      gridPosition: { x: 0, y: 8, w: 12, h: 4 }
     },
     {
       id: 'console',
       type: PanelType.Console,
       title: 'Console',
       icon: 'console-sql',
-      visible: true,
+      visible: false,
       dockable: true,
+      closeable: true,
       minWidth: 400,
-      minHeight: 150
+      minHeight: 150,
+      gridPosition: { x: 0, y: 12, w: 12, h: 3 }
     }
   ],
   grid: {
     cols: 12,
-    rows: 12,
-    margin: [10, 10],
-    containerPadding: [10, 10]
+    rows: 15,
+    margin: [16, 16],
+    containerPadding: [16, 16]
   }
 };
 
@@ -227,6 +243,26 @@ const defaultTheme: ThemeConfig = {
 };
 
 /**
+ * Load workspace configuration or use defaults
+ * 加载工作区配置或使用默认值
+ */
+const loadInitialWorkspace = () => {
+  const savedWorkspace = workspaceService.loadWorkspace();
+  if (savedWorkspace) {
+    return {
+      layout: savedWorkspace.layout,
+      theme: savedWorkspace.theme
+    };
+  }
+  return {
+    layout: defaultLayout,
+    theme: defaultTheme
+  };
+};
+
+const initialWorkspace = loadInitialWorkspace();
+
+/**
  * Create editor store with Zustand
  * 使用Zustand创建编辑器存储
  */
@@ -237,7 +273,7 @@ export const useEditorStore = create<EditorState & EditorActions>()(
       project: null,
       projectPath: null,
       isProjectDirty: false,
-      layout: defaultLayout,
+      layout: initialWorkspace.layout,
       selection: {
         selectedEntities: [],
         selectedAssets: [],
@@ -273,7 +309,7 @@ export const useEditorStore = create<EditorState & EditorActions>()(
         sortOrder: 'asc',
         isLoading: false
       },
-      theme: defaultTheme,
+      theme: initialWorkspace.theme,
       isLoading: false,
       activePanel: null,
       events: [],
@@ -294,6 +330,9 @@ export const useEditorStore = create<EditorState & EditorActions>()(
 
       updateLayout: (layout) => set((state) => {
         Object.assign(state.layout, layout);
+        // Auto-save workspace configuration
+        const currentState = get();
+        workspaceService.debouncedSave(currentState.layout, currentState.theme);
       }),
 
       togglePanelVisibility: (panelId) => set((state) => {
@@ -544,6 +583,26 @@ export const useEditorStore = create<EditorState & EditorActions>()(
       sortAssets: (by, order) => set((state) => {
         state.assetBrowser.sortBy = by;
         state.assetBrowser.sortOrder = order;
+      }),
+
+      // Workspace actions implementation
+      saveWorkspace: () => {
+        const state = get();
+        workspaceService.debouncedSave(state.layout, state.theme);
+      },
+
+      loadWorkspace: () => set((state) => {
+        const workspace = workspaceService.loadWorkspace();
+        if (workspace) {
+          state.layout = workspace.layout;
+          state.theme = workspace.theme;
+        }
+      }),
+
+      resetWorkspace: () => set((state) => {
+        state.layout = defaultLayout;
+        state.theme = defaultTheme;
+        workspaceService.clearWorkspace();
       })
     })),
     {

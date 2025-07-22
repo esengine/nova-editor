@@ -17,6 +17,17 @@ export enum PanelType {
 }
 
 /**
+ * Grid position for panel layout
+ * 面板布局的网格位置
+ */
+export interface GridPosition {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
  * Editor panel configuration
  * 编辑器面板配置
  */
@@ -33,11 +44,15 @@ export interface PanelConfig {
   visible: boolean;
   /** Whether panel is dockable | 面板是否可停靠 */
   dockable: boolean;
+  /** Whether panel is closeable | 面板是否可关闭 */
+  closeable?: boolean;
   /** Panel size constraints | 面板尺寸约束 */
   minWidth?: number;
   minHeight?: number;
   maxWidth?: number;
   maxHeight?: number;
+  /** Panel grid position | 面板网格位置 */
+  gridPosition?: GridPosition;
 }
 
 /**
