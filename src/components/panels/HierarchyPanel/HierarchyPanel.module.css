@@ -1,0 +1,260 @@
+/**
+ * HierarchyPanel component styles
+ * 层级面板组件样式
+ */
+
+.hierarchyPanel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+}
+
+.header {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--background-color);
+}
+
+.controls {
+  margin-bottom: 8px;
+}
+
+.searchBox {
+  width: 100%;
+}
+
+.treeContainer {
+  flex: 1;
+  padding: 8px;
+  overflow: auto;
+  background: var(--surface-color);
+}
+
+.entityTree {
+  background: transparent !important;
+  color: var(--text-color);
+}
+
+/* Custom tree node styles */
+.entityTree :global(.ant-tree-node-content-wrapper) {
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.entityTree :global(.ant-tree-node-content-wrapper:hover) {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.entityTree :global(.ant-tree-node-selected) {
+  background-color: var(--primary-color) !important;
+}
+
+.entityTree :global(.ant-tree-node-selected .ant-tree-title) {
+  color: white !important;
+}
+
+.entityTree :global(.ant-tree-switcher) {
+  color: var(--text-secondary-color);
+}
+
+.entityTree :global(.ant-tree-switcher:hover) {
+  color: var(--text-color);
+}
+
+/* Entity title styles */
+.entityTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 2px 4px;
+}
+
+.entityName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entityActions {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.entityTitle:hover .entityActions {
+  opacity: 1;
+}
+
+.visibilityButton {
+  padding: 2px 4px !important;
+  min-width: auto !important;
+  height: auto !important;
+}
+
+/* Search highlight */
+.searchHighlight {
+  background-color: var(--accent-color);
+  color: var(--background-color);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+/* Entity type indicators */
+.entityTypeIcon {
+  margin-right: 4px;
+  font-size: 12px;
+}
+
+.entityTypeScene {
+  color: var(--primary-color);
+}
+
+.entityTypeEntity {
+  color: var(--success-color);
+}
+
+.entityTypeComponent {
+  color: var(--text-secondary-color);
+}
+
+/* Drag and drop styles */
+.dragOver {
+  background-color: rgba(24, 144, 255, 0.1);
+  border: 1px dashed var(--primary-color);
+}
+
+.dragPlaceholder {
+  height: 2px;
+  background-color: var(--primary-color);
+  margin: 2px 0;
+  border-radius: 1px;
+}
+
+/* Context menu styles */
+.contextMenu {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.contextMenuItem {
+  padding: 8px 12px;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.contextMenuItem:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.contextMenuItem.danger {
+  color: var(--error-color);
+}
+
+.contextMenuItem.disabled {
+  color: var(--text-secondary-color);
+  cursor: not-allowed;
+}
+
+/* Scrollbar styles */
+.treeContainer::-webkit-scrollbar {
+  width: 6px;
+}
+
+.treeContainer::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.treeContainer::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.treeContainer::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary-color);
+}
+
+/* Animation for entity creation/deletion */
+@keyframes entityFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes entityFadeOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+}
+
+.entityEnter {
+  animation: entityFadeIn 0.3s ease-out;
+}
+
+.entityExit {
+  animation: entityFadeOut 0.3s ease-out;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .header {
+    padding: 6px 8px;
+  }
+  
+  .controls {
+    margin-bottom: 6px;
+  }
+  
+  .treeContainer {
+    padding: 6px;
+  }
+  
+  .entityActions {
+    opacity: 1; /* Always show on mobile */
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .hierarchyPanel {
+    border-width: 2px;
+  }
+  
+  .entityTree :global(.ant-tree-node-content-wrapper:hover) {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .searchHighlight {
+    outline: 1px solid var(--text-color);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .entityTree :global(.ant-tree-node-content-wrapper),
+  .entityActions,
+  .visibilityButton {
+    transition: none;
+  }
+  
+  .entityEnter,
+  .entityExit {
+    animation: none;
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "entryPoints": ["src/index.ts"],
+  "out": "docs",
+  "theme": "default",
+  "includeVersion": true,
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeExternals": true,
+  "readme": "README.md",
+  "name": "Nova Editor",
+  "tsconfig": "tsconfig.app.json",
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/*.test.tsx",
+    "**/*.spec.tsx",
+    "**/node_modules/**"
+  ]
+}
