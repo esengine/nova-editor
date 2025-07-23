@@ -3,13 +3,19 @@
 	url = https://github.com/esengine/NovaECS.git
 [submodule "packages/nova-ecs-math"]
 	path = packages/nova-ecs-math
+	url = https://github.com/esengine/nova-ecs-math.git
 [submodule "packages/nova-ecs-physics-core"]
 	path = packages/nova-ecs-physics-core
+	url = https://github.com/esengine/nova-ecs-physics-core.git
 [submodule "packages/nova-ecs-physics-box2d"]
 	path = packages/nova-ecs-physics-box2d
+	url = https://github.com/esengine/nova-ecs-physics-box2d.git
 [submodule "packages/nova-ecs-render-canvas"]
 	path = packages/nova-ecs-render-canvas
+	url = https://github.com/esengine/nova-ecs-render-canvas.git
 [submodule "packages/nova-ecs-render-core"]
 	path = packages/nova-ecs-render-core
+	url = https://github.com/esengine/nova-ecs-render-core.git
 [submodule "packages/nova-ecs-render-three"]
 	path = packages/nova-ecs-render-three
+	url = https://github.com/esengine/nova-ecs-render-three.git
