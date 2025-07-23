@@ -32,7 +32,6 @@ import {
 import { useEditorStore } from '../../stores/editorStore';
 import { sceneSerializer } from '../../services/SceneSerializer';
 import { assetImportPipeline } from '../../services/AssetImportPipeline';
-import { AssetPreview } from './AssetBrowserPanel/AssetPreview';
 import type { AssetMetadata } from '../../types/AssetTypes';
 
 const { TextArea } = Input;
@@ -491,7 +490,9 @@ export const SceneManagerPanel: React.FC<SceneManagerPanelProps> = ({
           footer={null}
           width={800}
         >
-          <AssetPreview asset={previewAsset} />
+          <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
+            Asset preview temporarily unavailable
+          </div>
         </Modal>
       )}
     </div>

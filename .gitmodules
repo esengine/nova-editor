@@ -1,0 +1,15 @@
+[submodule "packages/nova-ecs"]
+	path = packages/nova-ecs
+	url = https://github.com/esengine/NovaECS.git
+[submodule "packages/nova-ecs-math"]
+	path = packages/nova-ecs-math
+[submodule "packages/nova-ecs-physics-core"]
+	path = packages/nova-ecs-physics-core
+[submodule "packages/nova-ecs-physics-box2d"]
+	path = packages/nova-ecs-physics-box2d
+[submodule "packages/nova-ecs-render-canvas"]
+	path = packages/nova-ecs-render-canvas
+[submodule "packages/nova-ecs-render-core"]
+	path = packages/nova-ecs-render-core
+[submodule "packages/nova-ecs-render-three"]
+	path = packages/nova-ecs-render-three

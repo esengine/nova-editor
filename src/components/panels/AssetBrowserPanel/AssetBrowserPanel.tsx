@@ -16,7 +16,8 @@ import {
   message,
   Tabs,
   Tree,
-  Typography
+  Typography,
+  Space
 } from 'antd';
 import {
   AppstoreOutlined,
@@ -504,7 +505,7 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {/* View mode */}
-          <Button.Group>
+          <Space.Compact>
             <Button
               type={assetBrowser.viewMode === 'grid' ? 'primary' : 'default'}
               icon={<AppstoreOutlined />}
@@ -517,7 +518,7 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
               onClick={() => setAssetViewMode('list')}
               size="small"
             />
-          </Button.Group>
+          </Space.Compact>
           
           {/* Grid size slider (only show in grid mode) */}
           {assetBrowser.viewMode === 'grid' && (

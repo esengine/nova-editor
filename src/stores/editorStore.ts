@@ -101,6 +101,8 @@ interface EditorActions {
   toggleGrid: () => void;
   toggleGizmos: () => void;
   setTransformMode: (mode: TransformMode) => void;
+  toggleSnap: () => void;
+  setSnapSize: (size: number) => void;
   
   // World actions | 世界操作
   initializeWorld: () => void;
@@ -344,7 +346,9 @@ export const useEditorStore = create<EditorState & EditorActions>()(
         size: { x: 800, y: 600 },
         showGrid: true,
         showGizmos: true,
-        transformMode: 'translate' as TransformMode
+        transformMode: 'translate' as TransformMode,
+        snapEnabled: false,
+        snapSize: 0.5
       },
       assetBrowser: {
         currentFolderId: 'root',
@@ -477,6 +481,14 @@ export const useEditorStore = create<EditorState & EditorActions>()(
 
       setTransformMode: (mode) => set((state) => {
         state.viewport.transformMode = mode;
+      }),
+
+      toggleSnap: () => set((state) => {
+        state.viewport.snapEnabled = !state.viewport.snapEnabled;
+      }),
+
+      setSnapSize: (size) => set((state) => {
+        state.viewport.snapSize = size;
       }),
 
       setTheme: (theme) => set((state) => {

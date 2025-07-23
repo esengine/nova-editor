@@ -3,11 +3,8 @@
  * 场景视图面板 - 用于场景编辑的3D视口
  */
 
-import React, { Suspense, useRef, useEffect } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Grid, GizmoHelper, GizmoViewport, Bounds, TransformControls } from '@react-three/drei';
+import React, { useEffect } from 'react';
 import { Button, Space, Tooltip } from 'antd';
-import * as THREE from 'three';
 import {
   BorderOutlined,
   CompressOutlined,
@@ -17,405 +14,129 @@ import {
   ExpandOutlined
 } from '@ant-design/icons';
 import { useEditorStore } from '../../../stores/editorStore';
-import { TransformComponent, MeshRendererComponent, EditorMetadataComponent } from '../../../ecs';
-import type { TransformMode } from '../../../types';
+import { NovaThreeRenderer } from './NovaThreeRenderer';
 
 /**
- * Entity with transform controls
- * 带变换控制的实体
- */
-interface EntityObjectProps {
-  id: number;
-  position: [number, number, number];
-  rotation: [number, number, number];
-  scale: [number, number, number];
-  color: string;
-  geometryType: string;
-  isSelected: boolean;
-  hasRenderer: boolean;
-  transformMode: TransformMode;
-  onSelect: (id: number) => void;
-  onTransformChange: (id: number, transform: any) => void;
-  onDraggingChange?: (isDragging: boolean) => void;
-}
-
-const EntityObject: React.FC<EntityObjectProps> = ({
-  id,
-  position,
-  rotation,
-  scale,
-  color,
-  geometryType,
-  isSelected,
-  hasRenderer,
-  transformMode,
-  onSelect,
-  onTransformChange,
-  onDraggingChange
-}) => {
-  const [mesh, setMesh] = React.useState<THREE.Mesh | null>(null);
-  const [isDraggingThis, setIsDraggingThis] = React.useState(false);
-  const transformRef = useRef<any>(null);
-
-  // Update transform when props change, but not while dragging
-  useEffect(() => {
-    if (mesh && !isDraggingThis) {
-      mesh.position.set(...position);
-      mesh.rotation.set(
-        rotation[0] * Math.PI / 180,
-        rotation[1] * Math.PI / 180,
-        rotation[2] * Math.PI / 180
-      );
-      mesh.scale.set(...scale);
-    }
-  }, [mesh, position, rotation, scale, isDraggingThis]);
-
-  // Callback ref to capture the mesh
-  const meshRefCallback = React.useCallback((meshNode: THREE.Mesh | null) => {
-    setMesh(meshNode);
-  }, []);
-
-  const renderGeometry = () => {
-    switch (geometryType) {
-      case 'sphere':
-        return <sphereGeometry args={[0.5, 16, 16]} />;
-      case 'plane':
-        return <planeGeometry args={[1, 1]} />;
-      default:
-        return <boxGeometry args={[1, 1, 1]} />;
-    }
-  };
-
-  const handleDragStart = React.useCallback(() => {
-    setIsDraggingThis(true);
-    onDraggingChange?.(true);
-  }, [onDraggingChange]);
-
-  const handleDragEnd = React.useCallback(() => {
-    setIsDraggingThis(false);
-    onDraggingChange?.(false);
-    
-    // Only update the store when dragging ends
-    if (mesh) {
-      onTransformChange(id, {
-        position: { x: mesh.position.x, y: mesh.position.y, z: mesh.position.z },
-        rotation: { 
-          x: mesh.rotation.x * 180 / Math.PI, 
-          y: mesh.rotation.y * 180 / Math.PI, 
-          z: mesh.rotation.z * 180 / Math.PI 
-        },
-        scale: { x: mesh.scale.x, y: mesh.scale.y, z: mesh.scale.z }
-      });
-    }
-  }, [mesh, id, onTransformChange, onDraggingChange]);
-
-  return (
-    <>
-      {/* Always create a mesh for transform controls, visible only if has renderer */}
-      <mesh
-        ref={meshRefCallback}
-        position={position}
-        rotation={rotation.map(r => r * Math.PI / 180) as [number, number, number]}
-        scale={scale}
-        visible={hasRenderer}
-        onClick={(e) => {
-          e.stopPropagation();
-          onSelect(id);
-        }}
-      >
-        {renderGeometry()}
-        <meshStandardMaterial 
-          color={color} 
-          transparent={isSelected}
-          opacity={isSelected ? 0.8 : 1}
-        />
-      </mesh>
-      
-      {/* Always show transform controls for selected entities */}
-      {isSelected && mesh && (
-        <TransformControls
-          ref={transformRef}
-          object={mesh}
-          mode={transformMode}
-          onMouseDown={handleDragStart}
-          onMouseUp={handleDragEnd}
-        />
-      )}
-    </>
-  );
-};
-
-/**
- * Scene content component - manages dragging state
- * 场景内容组件 - 管理拖拽状态
- */
-interface SceneContentProps {
-  onDraggingChange: (isDragging: boolean) => void;
-}
-
-/**
- * Scene objects component - renders the actual 3D content
- * 场景对象组件 - 渲染实际的3D内容
- */
-const SceneObjects: React.FC<SceneContentProps> = ({ onDraggingChange }) => {
-  const selectedEntities = useEditorStore(state => state.selection.selectedEntities);
-  const selectEntity = useEditorStore(state => state.selectEntity);
-  const updateComponentProperty = useEditorStore(state => state.updateComponentProperty);
-  const forceUpdateTrigger = useEditorStore(state => state.forceUpdateTrigger);
-  const transformMode = useEditorStore(state => state.viewport.transformMode);
-  
-  // Force re-render when components change
-  const [, forceUpdate] = React.useState({});
-  React.useEffect(() => {
-    forceUpdate({});
-  }, [forceUpdateTrigger]);
-  
-  // Get entities from NovaECS world
-  // 从 NovaECS 世界获取实体
-  const world = useEditorStore(state => state.world.instance);
-  const objects = world ? world.entities
-    .filter((entity: any) => entity.getComponent(TransformComponent))
-    .map((entity: any) => {
-      const transform = entity.getComponent(TransformComponent)!;
-      const renderer = entity.getComponent(MeshRendererComponent);
-      const metadata = entity.getComponent(EditorMetadataComponent);
-      
-      return {
-        id: entity.id,
-        name: metadata?.name || `Entity_${entity.id}`,
-        position: [transform.position.x, transform.position.y, transform.position.z] as [number, number, number],
-        scale: [transform.scale.x, transform.scale.y, transform.scale.z] as [number, number, number],
-        rotation: [transform.rotation.x, transform.rotation.y, transform.rotation.z] as [number, number, number],
-        // Determine color based on material or component type
-        color: renderer?.material === 'EnemyMaterial' ? '#F44336' : 
-               renderer?.material === 'GroundMaterial' ? '#795548' :
-               renderer ? '#4CAF50' : '#CCCCCC', // Gray for entities without renderer
-        // Determine geometry type
-        geometryType: renderer?.meshType || 'box',
-        hasRenderer: !!renderer
-      };
-    }) : [];
-
-  // Handle transform changes
-  const handleTransformChange = (entityId: number, transform: any) => {
-    // Update position
-    updateComponentProperty(entityId, 'Transform', 'position', transform.position);
-    
-    // Update rotation
-    updateComponentProperty(entityId, 'Transform', 'rotation', transform.rotation);
-    
-    // Update scale
-    updateComponentProperty(entityId, 'Transform', 'scale', transform.scale);
-  };
-
-  return (
-    <>
-      {/* Render all entities with transform component */}
-      {objects.map((obj: any) => {
-        const isSelected = selectedEntities.includes(obj.id as number);
-        
-        return (
-          <EntityObject
-            key={`entity-${obj.id}`}
-            id={obj.id}
-            position={obj.position}
-            rotation={obj.rotation}
-            scale={obj.scale}
-            color={obj.color}
-            geometryType={obj.geometryType}
-            isSelected={isSelected}
-            hasRenderer={obj.hasRenderer}
-            transformMode={transformMode}
-            onSelect={selectEntity}
-            onTransformChange={handleTransformChange}
-            onDraggingChange={onDraggingChange}
-          />
-        );
-      })}
-    </>
-  );
-};
-
-/**
- * Camera controller component
- * 相机控制器组件
- */
-const CameraController: React.FC = () => {
-  const { camera } = useThree();
-  const setCameraPosition = useEditorStore(state => state.setCameraPosition);
-  const setCameraRotation = useEditorStore(state => state.setCameraRotation);
-
-  useFrame(() => {
-    // Update camera position in store
-    setCameraPosition({
-      x: camera.position.x,
-      y: camera.position.y,
-      z: camera.position.z
-    });
-    
-    setCameraRotation({
-      x: camera.rotation.x,
-      y: camera.rotation.y,
-      z: camera.rotation.z
-    });
-  });
-
-  return null;
-};
-
-/**
- * Scene view controls toolbar
- * 场景视图控制工具栏
+ * Scene View Controls Component
+ * 场景视图控制组件
  */
 const SceneViewControls: React.FC = () => {
   const showGrid = useEditorStore(state => state.viewport.showGrid);
   const showGizmos = useEditorStore(state => state.viewport.showGizmos);
   const transformMode = useEditorStore(state => state.viewport.transformMode);
+  const snapEnabled = useEditorStore(state => state.viewport.snapEnabled);
   const toggleGrid = useEditorStore(state => state.toggleGrid);
   const toggleGizmos = useEditorStore(state => state.toggleGizmos);
   const setTransformMode = useEditorStore(state => state.setTransformMode);
+  const toggleSnap = useEditorStore(state => state.toggleSnap);
 
   return (
-    <div style={{
+    <div style={{ 
       position: 'absolute',
       top: '8px',
-      right: '8px',
+      left: '8px',
       zIndex: 1000,
-      backgroundColor: 'rgba(0, 0, 0, 0.7)',
-      borderRadius: '6px',
-      padding: '4px'
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '8px'
     }}>
-      <Space>
-        {/* Transform Mode Controls */}
-        <Space.Compact>
-          <Tooltip title="Move Tool (W)">
-            <Button
-              type={transformMode === 'translate' ? 'primary' : 'default'}
-              size="small"
-              icon={<DragOutlined />}
-              onClick={() => setTransformMode('translate')}
-            />
-          </Tooltip>
-          <Tooltip title="Rotate Tool (E)">
-            <Button
-              type={transformMode === 'rotate' ? 'primary' : 'default'}
-              size="small"
-              icon={<ReloadOutlined />}
-              onClick={() => setTransformMode('rotate')}
-            />
-          </Tooltip>
-          <Tooltip title="Scale Tool (R)">
-            <Button
-              type={transformMode === 'scale' ? 'primary' : 'default'}
-              size="small"
-              icon={<ExpandOutlined />}
-              onClick={() => setTransformMode('scale')}
-            />
-          </Tooltip>
-        </Space.Compact>
-        
-        {/* View Controls */}
+      {/* Transform Mode Controls */}
+      <Space.Compact>
+        <Tooltip title="Move (W)">
+          <Button
+            type={transformMode === 'translate' ? 'primary' : 'default'}
+            icon={<DragOutlined />}
+            size="small"
+            onClick={() => setTransformMode('translate')}
+          />
+        </Tooltip>
+        <Tooltip title="Rotate (E)">
+          <Button
+            type={transformMode === 'rotate' ? 'primary' : 'default'}
+            icon={<ReloadOutlined />}
+            size="small"
+            onClick={() => setTransformMode('rotate')}
+          />
+        </Tooltip>
+        <Tooltip title="Scale (R)">
+          <Button
+            type={transformMode === 'scale' ? 'primary' : 'default'}
+            icon={<ExpandOutlined />}
+            size="small"
+            onClick={() => setTransformMode('scale')}
+          />
+        </Tooltip>
+      </Space.Compact>
+
+      {/* View Controls */}
+      <Space.Compact>
         <Tooltip title="Toggle Grid">
           <Button
             type={showGrid ? 'primary' : 'default'}
-            size="small"
             icon={<BorderOutlined />}
+            size="small"
             onClick={toggleGrid}
           />
         </Tooltip>
         <Tooltip title="Toggle Gizmos">
           <Button
             type={showGizmos ? 'primary' : 'default'}
-            size="small"
             icon={<CompressOutlined />}
+            size="small"
             onClick={toggleGizmos}
           />
         </Tooltip>
-        <Tooltip title="View Settings">
+        <Tooltip title="Toggle Snap">
           <Button
-            size="small"
+            type={snapEnabled ? 'primary' : 'default'}
             icon={<SettingOutlined />}
+            size="small"
+            onClick={toggleSnap}
           />
         </Tooltip>
-      </Space>
+      </Space.Compact>
     </div>
   );
 };
 
 /**
- * Loading component for Suspense
- * Suspense的加载组件
- */
-const SceneLoading: React.FC = () => (
-  <div style={{
-    width: '100%',
-    height: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#1a1a1a'
-  }}>
-    <div style={{ textAlign: 'center', color: '#666' }}>
-      <div>Loading 3D Scene...</div>
-    </div>
-  </div>
-);
-
-/**
- * Main SceneViewPanel component
- * 主场景视图面板组件
+ * Scene View Panel Props
  */
 export interface SceneViewPanelProps {
   style?: React.CSSProperties;
   className?: string;
 }
 
+/**
+ * Scene View Panel Component
+ * 场景视图面板组件
+ */
 export const SceneViewPanel: React.FC<SceneViewPanelProps> = ({ 
   style, 
   className 
 }) => {
-  const showGrid = useEditorStore(state => state.viewport.showGrid);
-  const showGizmos = useEditorStore(state => state.viewport.showGizmos);
-  const clearSelection = useEditorStore(state => state.clearSelection);
+  const snapEnabled = useEditorStore(state => state.viewport.snapEnabled);
   const setTransformMode = useEditorStore(state => state.setTransformMode);
-  const worldStats = useEditorStore(state => state.world.stats);
-  const [isDragging, setIsDragging] = React.useState(false);
-  const [renderStats, setRenderStats] = React.useState({ fps: 0, frameTime: 0 });
-  const orbitControlsRef = useRef<any>(null);
+  const toggleSnap = useEditorStore(state => state.toggleSnap);
 
-  // Track render performance
-  const frameTimeRef = useRef<number[]>([]);
-  const lastFrameTimeRef = useRef(performance.now());
-
-  React.useEffect(() => {
-    const updateRenderStats = () => {
-      const now = performance.now();
-      const frameTime = now - lastFrameTimeRef.current;
-      lastFrameTimeRef.current = now;
-
-      frameTimeRef.current.push(frameTime);
-      if (frameTimeRef.current.length > 60) {
-        frameTimeRef.current.shift();
-      }
-
-      const averageFrameTime = frameTimeRef.current.reduce((a, b) => a + b, 0) / frameTimeRef.current.length;
-      const fps = Math.round(1000 / averageFrameTime);
-
-      setRenderStats({ fps, frameTime: Math.round(averageFrameTime * 100) / 100 });
-      requestAnimationFrame(updateRenderStats);
-    };
-
-    const frame = requestAnimationFrame(updateRenderStats);
-    return () => cancelAnimationFrame(frame);
-  }, []);
-
-  // Handle keyboard shortcuts for transform modes
-  React.useEffect(() => {
+  // Handle keyboard shortcuts for transform modes and snap
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Only handle if no modifier keys are pressed and target is not an input
-      if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+      // Skip if target is an input
       if ((event.target as HTMLElement)?.tagName === 'INPUT' || 
           (event.target as HTMLElement)?.tagName === 'TEXTAREA') return;
+
+      // Handle Ctrl key for temporary snap toggle
+      if (event.ctrlKey && event.key === 'Control') {
+        event.preventDefault();
+        if (!snapEnabled) {
+          toggleSnap();
+        }
+        return;
+      }
+
+      // Only handle transform mode shortcuts if no modifier keys are pressed
+      if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
 
       switch (event.key.toLowerCase()) {
         case 'w':
@@ -433,9 +154,22 @@ export const SceneViewPanel: React.FC<SceneViewPanelProps> = ({
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setTransformMode]);
+    const handleKeyUp = (event: KeyboardEvent) => {
+      // Handle Ctrl key release for temporary snap toggle
+      if (event.key === 'Control' && snapEnabled) {
+        // Only disable snap if it was temporarily enabled
+        toggleSnap();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [snapEnabled, setTransformMode, toggleSnap]);
 
   return (
     <div 
@@ -452,102 +186,7 @@ export const SceneViewPanel: React.FC<SceneViewPanelProps> = ({
       className={className}
     >
       <SceneViewControls />
-      
-      <Suspense fallback={<SceneLoading />}>
-        <Canvas
-          camera={{
-            position: [5, 5, 5],
-            fov: 75
-          }}
-          style={{ 
-            width: '100%', 
-            height: '100%',
-            background: 'linear-gradient(to bottom, #2a2a2a 0%, #1a1a1a 100%)'
-          }}
-          onClick={(e) => {
-            // Clear selection when clicking empty space
-            if (e.target === e.currentTarget) {
-              clearSelection();
-            }
-          }}
-        >
-          {/* Lighting */}
-          <ambientLight intensity={0.4} />
-          <directionalLight position={[10, 10, 5]} intensity={0.8} />
-          <directionalLight position={[-10, -10, -5]} intensity={0.2} />
-          
-          {/* Grid */}
-          {showGrid && (
-            <Grid
-              position={[0, -0.5, 0]}
-              args={[20, 20]}
-              cellSize={1}
-              cellThickness={0.5}
-              cellColor="#333333"
-              sectionSize={5}
-              sectionThickness={1}
-              sectionColor="#555555"
-              fadeDistance={25}
-              fadeStrength={1}
-            />
-          )}
-          
-          {/* Scene Objects */}
-          <Bounds fit clip observe margin={1.2}>
-            <SceneObjects onDraggingChange={setIsDragging} />
-          </Bounds>
-          
-          {/* Controls - disabled when dragging transform controls */}
-          <OrbitControls
-            ref={orbitControlsRef}
-            enabled={!isDragging}
-            enablePan={true}
-            enableZoom={true}
-            enableRotate={true}
-            dampingFactor={0.05}
-            rotateSpeed={0.5}
-            zoomSpeed={0.5}
-            panSpeed={0.5}
-            maxPolarAngle={Math.PI * 0.8}
-            minDistance={1}
-            maxDistance={50}
-          />
-          
-          {/* Camera Controller */}
-          <CameraController />
-          
-          {/* Gizmo Helper */}
-          {showGizmos && (
-            <GizmoHelper alignment="bottom-right" margin={[80, 80]}>
-              <GizmoViewport 
-                axisColors={['#ff4757', '#2ed573', '#3742fa']} 
-                labelColor="#ffffff"
-              />
-            </GizmoHelper>
-          )}
-        </Canvas>
-      </Suspense>
-      
-      {/* Status Bar */}
-      <div style={{
-        position: 'absolute',
-        bottom: '8px',
-        left: '8px',
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        padding: '4px 8px',
-        borderRadius: '4px',
-        fontSize: '12px',
-        color: '#ccc',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '2px'
-      }}>
-        <div>Camera: Press mouse to navigate | Objects: Click to select</div>
-        <div>
-          Render: {renderStats.fps} FPS ({renderStats.frameTime}ms) | 
-          ECS: {worldStats.entityCount} entities, {worldStats.systemCount} systems
-        </div>
-      </div>
+      <NovaThreeRenderer />
     </div>
   );
 };

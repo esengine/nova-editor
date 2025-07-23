@@ -210,6 +210,10 @@ export interface ViewportState {
   showGizmos: boolean;
   /** Current transform mode | 当前变换模式 */
   transformMode: TransformMode;
+  /** Whether snap is enabled | 是否启用吸附 */
+  snapEnabled: boolean;
+  /** Snap grid size | 吸附网格大小 */
+  snapSize: number;
 }
 
 /**

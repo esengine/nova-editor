@@ -1,12 +1,11 @@
 /**
  * SceneViewPanel exports
- * SceneViewPanel 导出
  */
 
 export { SceneViewPanel } from './SceneViewPanel';
 export type { SceneViewPanelProps } from './SceneViewPanel';
 
-// Export helper components
-export * from './SceneHelpers';
-export * from './ScenePicking';
-export * from './ViewModes';
+// Export enhanced rendering systems
+export { MaterialComponent, PREDEFINED_MATERIALS, getMaterialConfig, getAvailableMaterials } from './MaterialSystem';
+export { createGeometry, getGeometryConfig, getAvailableGeometries, PREDEFINED_GEOMETRIES } from './GeometrySystem';
+export { NovaThreeRenderer } from './NovaThreeRenderer';
