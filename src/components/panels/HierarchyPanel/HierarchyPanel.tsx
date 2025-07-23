@@ -26,7 +26,7 @@ import {
 import { useEditorStore } from '../../../stores/editorStore';
 import { EditorEventType } from '../../../types';
 import type { EntityHierarchyNode } from '../../../ecs';
-import './HierarchyPanel.module.css';
+import styles from './HierarchyPanel.module.css';
 
 const { Search } = Input;
 
@@ -60,7 +60,7 @@ export const HierarchyPanel: React.FC<HierarchyPanelProps> = ({
   className, 
   style 
 }) => {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   
   // State management | 状态管理
   const selectedEntities = useEditorStore(state => state.selection.selectedEntities);
@@ -72,7 +72,6 @@ export const HierarchyPanel: React.FC<HierarchyPanelProps> = ({
   const setEntityActive = useEditorStore(state => state.setEntityActive);
   const entityHierarchy = useEditorStore(state => state.world.entityHierarchy);
   const dispatchEvent = useEditorStore(state => state.dispatchEvent);
-  const theme = useEditorStore(state => state.theme);
 
   // Local state | 本地状态
   const [searchValue, setSearchValue] = useState('');
@@ -93,6 +92,7 @@ export const HierarchyPanel: React.FC<HierarchyPanelProps> = ({
           : undefined
       };
     };
+
 
     if (entityHierarchy.length === 0) {
       return [{
@@ -170,7 +170,7 @@ export const HierarchyPanel: React.FC<HierarchyPanelProps> = ({
   // Handle entity deletion | 处理实体删除
   const handleDeleteEntity = (): void => {
     if (selectedEntities.length > 0) {
-      Modal.confirm({
+      modal.confirm({
         title: 'Delete Entities',
         content: `Are you sure you want to delete ${selectedEntities.length} entity(ies)?`,
         okText: 'Delete',
@@ -226,27 +226,17 @@ export const HierarchyPanel: React.FC<HierarchyPanelProps> = ({
   // Custom title renderer | 自定义标题渲染器
   const renderTitle = (node: EntityTreeNode): React.ReactNode => {
     const entityId = parseInt(node.key, 10);
-    const isSelected = !isNaN(entityId) && selectedEntities.includes(entityId);
     
     return (
-      <div 
-        style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between',
-          color: isSelected ? theme.colors.primary : theme.colors.text
-        }}
-      >
-        <span>{node.title}</span>
-        <Space size="small">
+      <div className={styles.entityTitle}>
+        <span className={styles.entityName}>{node.title}</span>
+        <div className={styles.entityActions}>
           <Tooltip title={node.isVisible ? 'Hide' : 'Show'}>
             <Button
               type="text"
               size="small"
               icon={node.isVisible ? <EyeOutlined /> : <EyeInvisibleOutlined />}
-              style={{ 
-                color: node.isVisible ? theme.colors.text : theme.colors.textSecondary 
-              }}
+              className={styles.visibilityButton}
               onClick={(e) => {
                 e.stopPropagation();
                 if (!isNaN(entityId)) {
@@ -256,33 +246,19 @@ export const HierarchyPanel: React.FC<HierarchyPanelProps> = ({
               }}
             />
           </Tooltip>
-        </Space>
+        </div>
       </div>
     );
   };
 
   return (
     <div 
-      className={className}
-      style={{ 
-        height: '100%', 
-        display: 'flex', 
-        flexDirection: 'column',
-        background: theme.colors.surface,
-        border: `1px solid ${theme.colors.border}`,
-        borderRadius: '6px',
-        ...style 
-      }}
+      className={`${styles.hierarchyPanel} ${className || ''}`}
+      style={style}
     >
       {/* Header with controls | 带控件的头部 */}
-      <div 
-        style={{ 
-          padding: '8px 12px', 
-          borderBottom: `1px solid ${theme.colors.border}`,
-          background: theme.colors.background
-        }}
-      >
-        <div style={{ marginBottom: '8px' }}>
+      <div className={styles.header}>
+        <div className={styles.controls}>
           <Space>
             <Tooltip title="Create Entity">
               <Button 
@@ -313,20 +289,13 @@ export const HierarchyPanel: React.FC<HierarchyPanelProps> = ({
           placeholder="Search entities..."
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
-          style={{ width: '100%' }}
+          className={styles.searchBox}
           allowClear
         />
       </div>
 
       {/* Entity tree | 实体树 */}
-      <div 
-        style={{ 
-          flex: 1, 
-          padding: '8px',
-          overflow: 'auto',
-          background: theme.colors.surface
-        }}
-      >
+      <div className={styles.treeContainer} data-scrollable="hierarchy">
         <Tree
           treeData={filteredEntities}
           selectedKeys={selectedEntities.map(id => id.toString())}
@@ -336,10 +305,7 @@ export const HierarchyPanel: React.FC<HierarchyPanelProps> = ({
           titleRender={renderTitle}
           showLine={{ showLeafIcon: false }}
           blockNode
-          style={{ 
-            background: 'transparent',
-            color: theme.colors.text
-          }}
+          className={styles.entityTree}
         />
       </div>
 

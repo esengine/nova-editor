@@ -3,4 +3,4 @@
  */
 
 export { ConsolePanel } from './ConsolePanel';
-export type { ConsolePanelProps, ConsoleMessage } from './ConsolePanel';
+export type { ConsolePanelProps } from './ConsolePanel';

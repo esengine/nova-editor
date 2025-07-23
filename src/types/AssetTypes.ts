@@ -10,12 +10,15 @@
 export enum AssetType {
   Folder = 'folder',
   Texture = 'texture',
+  Mesh = 'mesh',
   Model = 'model',
   Audio = 'audio',
+  Video = 'video',
   Script = 'script',
   Scene = 'scene',
   Prefab = 'prefab',
   Material = 'material',
+  Font = 'font',
   Unknown = 'unknown'
 }
 
@@ -62,6 +65,12 @@ export interface AssetMetadata {
   
   /** Asset file path */
   path: string;
+  
+  /** Image/Video width (optional) */
+  width?: number;
+  
+  /** Image/Video height (optional) */
+  height?: number;
 }
 
 /**

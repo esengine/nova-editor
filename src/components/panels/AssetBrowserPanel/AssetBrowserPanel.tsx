@@ -48,7 +48,6 @@ import type {
 
 const { Search } = Input;
 const { Option } = Select;
-const { TabPane } = Tabs;
 const { Text } = Typography;
 
 /**
@@ -59,11 +58,14 @@ const ASSET_ICONS = {
   [AssetType.Folder]: <FolderOutlined />,
   [AssetType.Texture]: <PictureOutlined />,
   [AssetType.Model]: <VideoCameraOutlined />,
+  [AssetType.Mesh]: <VideoCameraOutlined />,
   [AssetType.Audio]: <AudioOutlined />,
+  [AssetType.Video]: <VideoCameraOutlined />,
   [AssetType.Script]: <CodeOutlined />,
   [AssetType.Scene]: <FileTextOutlined />,
   [AssetType.Prefab]: <FileOutlined />,
   [AssetType.Material]: <FileTextOutlined />,
+  [AssetType.Font]: <FileTextOutlined />,
   [AssetType.Unknown]: <QuestionOutlined />
 };
 
@@ -75,11 +77,14 @@ const ASSET_COLORS = {
   [AssetType.Folder]: '#faad14',
   [AssetType.Texture]: '#52c41a',
   [AssetType.Model]: '#1890ff',
+  [AssetType.Mesh]: '#1890ff',
   [AssetType.Audio]: '#722ed1',
+  [AssetType.Video]: '#ff4d4f',
   [AssetType.Script]: '#13c2c2',
   [AssetType.Scene]: '#eb2f96',
   [AssetType.Prefab]: '#f5222d',
   [AssetType.Material]: '#fa8c16',
+  [AssetType.Font]: '#389e0d',
   [AssetType.Unknown]: '#8c8c8c'
 };
 
@@ -687,57 +692,65 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
           minHeight: '40px'
         }}
         size="small"
-      >
-        <TabPane tab="Project Files" key="project" style={{ height: '100%' }}>
-          {renderProjectView()}
-        </TabPane>
-        
-        <TabPane tab="Assets" key="assets" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            {renderToolbar()}
-            
-            {/* Breadcrumb */}
-            <div style={{ padding: '0 12px 6px 12px', borderBottom: '1px solid #303030', backgroundColor: '#1a1a1a' }}>
-              <FolderBreadcrumb
-                currentFolder={currentFolder}
-                folders={folders}
-                onNavigate={navigateToFolder}
-              />
-            </div>
-            
-            {/* Content */}
-            <div style={{ flex: 1, position: 'relative' }}>
-              {isLoading ? (
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  height: '100%'
-                }}>
-                  <Spin size="large" />
-                </div>
-              ) : assets.length === 0 ? (
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  height: '100%',
-                  flexDirection: 'column'
-                }}>
-                  <Empty
-                    description="No assets found"
-                    style={{ color: '#ccc' }}
+        items={[
+          {
+            key: 'project',
+            label: 'Project Files',
+            style: { height: '100%' },
+            children: renderProjectView()
+          },
+          {
+            key: 'assets',
+            label: 'Assets',
+            style: { height: '100%', display: 'flex', flexDirection: 'column' },
+            children: (
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                {renderToolbar()}
+                
+                {/* Breadcrumb */}
+                <div style={{ padding: '0 12px 6px 12px', borderBottom: '1px solid #303030', backgroundColor: '#1a1a1a' }}>
+                  <FolderBreadcrumb
+                    currentFolder={currentFolder}
+                    folders={folders}
+                    onNavigate={navigateToFolder}
                   />
                 </div>
-              ) : assetBrowser.viewMode === 'grid' ? (
-                renderGridView()
-              ) : (
-                renderListView()
-              )}
-            </div>
-          </div>
-        </TabPane>
-      </Tabs>
+                
+                {/* Content */}
+                <div style={{ flex: 1, position: 'relative' }}>
+                  {isLoading ? (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '100%'
+                    }}>
+                      <Spin size="large" />
+                    </div>
+                  ) : assets.length === 0 ? (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '100%',
+                      flexDirection: 'column'
+                    }}>
+                      <Empty
+                        description="No assets found"
+                        style={{ color: '#ccc' }}
+                      />
+                    </div>
+                  ) : assetBrowser.viewMode === 'grid' ? (
+                    renderGridView()
+                  ) : (
+                    renderListView()
+                  )}
+                </div>
+              </div>
+            )
+          }
+        ]}
+      />
     </div>
   );
 };

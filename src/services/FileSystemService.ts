@@ -1,6 +1,6 @@
 /**
- * Enhanced File System Service with real file system access
- * 增强的文件系统服务，支持真实的文件系统访问
+ * File System Service with real file system access
+ * 文件系统服务，支持真实的文件系统访问
  */
 
 import { 
@@ -42,8 +42,8 @@ export interface Project {
 }
 
 /**
- * Enhanced File System Service
- * 增强的文件系统服务
+ * File System Service
+ * 文件系统服务
  */
 export class FileSystemService {
   private static instance: FileSystemService;

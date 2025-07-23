@@ -531,6 +531,9 @@ export const useEditorStore = create<EditorState & EditorActions>()(
         
         state.world.instance = editorWorld;
         
+        // Initialize hierarchy data for empty world
+        state.world.entityHierarchy = editorWorld.getEntityHierarchy();
+        
         // Initialize with empty world (no sample data)
         // integration.getStoreActions().initializeSampleData();
       }),
@@ -552,9 +555,16 @@ export const useEditorStore = create<EditorState & EditorActions>()(
         if (state.world.instance) {
           const command = new CreateEntityCommand(state.world.instance, name);
           await state.executeCommand(command);
-          set((state) => {
-            state.forceUpdateTrigger++;
-          });
+          
+          // Update hierarchy immediately after entity creation
+          const integration = state.world.instance._integration;
+          if (integration) {
+            const hierarchy = state.world.instance.getEntityHierarchy();
+            set((state) => {
+              state.world.entityHierarchy = hierarchy;
+              state.forceUpdateTrigger++;
+            });
+          }
         }
       },
 
@@ -563,16 +573,23 @@ export const useEditorStore = create<EditorState & EditorActions>()(
         if (state.world.instance) {
           const command = new DeleteEntityCommand(state.world.instance, entityId);
           await state.executeCommand(command);
-          set((state) => {
-            state.forceUpdateTrigger++;
-            // Clear selection if the removed entity was selected
-            state.selection.selectedEntities = state.selection.selectedEntities.filter(
-              (id: EntityId) => id !== entityId
-            );
-            if (state.selection.primarySelection === entityId) {
-              state.selection.primarySelection = null;
-            }
-          });
+          
+          // Update hierarchy immediately after entity removal
+          const integration = state.world.instance._integration;
+          if (integration) {
+            const hierarchy = state.world.instance.getEntityHierarchy();
+            set((state) => {
+              state.world.entityHierarchy = hierarchy;
+              state.forceUpdateTrigger++;
+              // Clear selection if the removed entity was selected
+              state.selection.selectedEntities = state.selection.selectedEntities.filter(
+                (id: EntityId) => id !== entityId
+              );
+              if (state.selection.primarySelection === entityId) {
+                state.selection.primarySelection = null;
+              }
+            });
+          }
         }
       },
 

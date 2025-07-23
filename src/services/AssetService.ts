@@ -238,6 +238,28 @@ export class AssetService {
   }
 
   /**
+   * Create new asset
+   * 创建新资源
+   */
+  public async createAsset(metadata: AssetMetadata, data: ArrayBuffer | string): Promise<void> {
+    if (!this.db) await this.initialize();
+    
+    const tx = this.db!.transaction(['assets', 'fileData'], 'readwrite');
+    
+    // Store metadata
+    await tx.objectStore('assets').add(metadata);
+    
+    // Store file data
+    const blob = typeof data === 'string' ? new Blob([data], { type: 'text/plain' }) : new Blob([data]);
+    await tx.objectStore('fileData').add({
+      id: metadata.id,
+      data: blob
+    });
+    
+    await tx.done;
+  }
+
+  /**
    * Import assets from files
    * 从文件导入资源
    */

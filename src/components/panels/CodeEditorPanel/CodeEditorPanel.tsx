@@ -5,7 +5,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Editor, type Monaco } from '@monaco-editor/react';
-import { Button, Space, message, Tabs, Upload, Modal } from 'antd';
+import { Button, Space, message, Tabs, Upload, Modal, App } from 'antd';
 import {
   SaveOutlined,
   UndoOutlined,
@@ -32,6 +32,7 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
   style,
   className
 }) => {
+  const { modal } = App.useApp();
   const theme = useEditorStore(state => state.theme);
   const editorTheme = 'vs-dark';
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -226,7 +227,7 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
     e.stopPropagation();
     const file = fileService.current.getOpenFiles().find(f => f.id === fileId);
     if (file?.isModified) {
-      Modal.confirm({
+      modal.confirm({
         title: 'Unsaved Changes',
         content: `${file.name} has unsaved changes. Do you want to close it anyway?`,
         onOk: () => {
@@ -238,7 +239,7 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
       fileService.current.closeFile(fileId);
       updateFileTabs();
     }
-  }, [updateFileTabs]);
+  }, [modal, updateFileTabs]);
 
   // Render toolbar
   const renderToolbar = () => (

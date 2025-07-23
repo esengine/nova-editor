@@ -1,0 +1,134 @@
+/**
+ * DockLayout component styles
+ */
+
+.dockLayoutContainer {
+  height: 100%;
+  width: 100%;
+  background: #141414;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Dock layout theme overrides */
+.dockLayoutContainer :global(.dock) {
+  background: #141414 !important;
+  color: #ffffff !important;
+}
+
+.dockLayoutContainer :global(.dock-layout) {
+  background: #141414 !important;
+}
+
+.dockLayoutContainer :global(.dock-panel) {
+  background: #1f1f1f !important;
+  border: 1px solid #434343 !important;
+  border-radius: 6px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+.dockLayoutContainer :global(.dock-panel:focus-within) {
+  border-color: #1890ff !important;
+}
+
+/* Tab styles */
+.dockLayoutContainer :global(.dock-bar) {
+  background: #1f1f1f !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.dockLayoutContainer :global(.dock-tabs) {
+  background: #1f1f1f !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.dockLayoutContainer :global(.dock-tab-pane) {
+  background: #141414 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.dockLayoutContainer :global(.dock-content) {
+  background: #141414 !important;
+}
+
+.dockLayoutContainer :global(.dock-tab) {
+  background: #1f1f1f !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 0 !important;
+  position: relative !important;
+  padding: 0 16px 0 8px !important;
+  margin: 0 8px 0 0 !important;
+  min-width: 80px !important;
+  height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  overflow: hidden;
+}
+
+
+.dockLayoutContainer :global(.dock-tab:hover) {
+  background: #2d2d2d !important;
+}
+
+.dockLayoutContainer :global(.dock-tab.dock-tab-active) {
+  background: #141414 !important;
+  color: #ffffff !important;
+  border-bottom: none !important;
+}
+
+.dockLayoutContainer :global(.dock-tab-content) {
+  background: #141414 !important;
+  padding: 0 !important;
+}
+
+/* Navigation styles */
+.dockLayoutContainer :global(.dock-nav) {
+  background: #1f1f1f !important;
+  border-bottom: none !important;
+  padding: 0 !important;
+}
+
+.dockLayoutContainer :global(.dock-nav-list) {
+  background: #1f1f1f !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.dockLayoutContainer :global(.dock-nav-wrap) {
+  background: #1f1f1f !important;
+}
+
+.dockLayoutContainer :global(.dock-nav-operations) {
+  background: #1f1f1f !important;
+}
+
+.dockLayoutContainer :global(.dock-nav-tabs-content) {
+  background: #1f1f1f !important;
+}
+
+.dockLayoutContainer :global(.dock-nav-add) {
+  background: #1f1f1f !important;
+}
+
+.dockLayoutContainer :global(.dock-ink-bar) {
+  display: none !important;
+}
+
+.dockLayoutContainer :global(.dock-tab-close-btn) {
+  display: none !important;
+}
+
+.dockLayoutContainer :global(.dock-panel-content) {
+  background: #141414 !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}

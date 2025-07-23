@@ -118,6 +118,7 @@ export class EditorStoreIntegration {
         const entityName = name || `Entity_${Date.now()}`;
         const entity = this._world.createEntity();
         
+        
         // Add editor metadata component
         entity.addComponent(new EditorMetadataComponent(entityName));
         
