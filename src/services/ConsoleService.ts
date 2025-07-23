@@ -218,11 +218,22 @@ export class ConsoleService {
    * 更新性能指标
    */
   updatePerformanceMetrics(metrics: Partial<PerformanceMetrics>) {
-    this.performanceMetrics = {
-      ...this.performanceMetrics,
-      ...metrics
-    };
-    this.notifyMetricsListeners();
+    // Check if any metrics actually changed to avoid unnecessary updates
+    let hasChanges = false;
+    for (const [key, value] of Object.entries(metrics)) {
+      if (this.performanceMetrics[key as keyof PerformanceMetrics] !== value) {
+        hasChanges = true;
+        break;
+      }
+    }
+    
+    if (hasChanges) {
+      this.performanceMetrics = {
+        ...this.performanceMetrics,
+        ...metrics
+      };
+      this.notifyMetricsListeners();
+    }
   }
 
   /**
@@ -241,6 +252,7 @@ export class ConsoleService {
     let lastTime = performance.now();
     let frameCount = 0;
     let frameTimes: number[] = [];
+    let lastMemoryUpdate = 0;
 
     const monitor = () => {
       const currentTime = performance.now();
@@ -250,25 +262,30 @@ export class ConsoleService {
       frameTimes.push(deltaTime);
       frameCount++;
 
-      // Update metrics every second
+      // Update FPS metrics every second (60 frames)
       if (frameTimes.length >= 60) {
         const avgFrameTime = frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
         const fps = Math.round(1000 / avgFrameTime);
+        const roundedFrameTime = Math.round(avgFrameTime * 100) / 100;
 
         this.updatePerformanceMetrics({
           fps,
-          frameTime: Math.round(avgFrameTime * 100) / 100
+          frameTime: roundedFrameTime
         });
 
         frameTimes = [];
       }
 
-      // Update memory usage if available
-      if ('memory' in performance) {
+      // Update memory usage less frequently (every 2 seconds)
+      if ('memory' in performance && currentTime - lastMemoryUpdate > 2000) {
         const memory = (performance as any).memory;
+        const memoryUsage = Math.round(memory.usedJSHeapSize / 1048576); // Convert to MB
+        
         this.updatePerformanceMetrics({
-          memoryUsage: Math.round(memory.usedJSHeapSize / 1048576) // Convert to MB
+          memoryUsage
         });
+        
+        lastMemoryUpdate = currentTime;
       }
 
       requestAnimationFrame(monitor);

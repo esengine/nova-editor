@@ -152,19 +152,28 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
   const logsEndRef = useRef<HTMLDivElement>(null);
   const commandHistory = useRef(new CommandHistory());
   
+  // Create stable callback functions to avoid unnecessary re-subscriptions
+  const handleLogsUpdate = useCallback((logs: LogEntry[]) => {
+    setLogs(logs);
+  }, []);
+  
+  const handleMetricsUpdate = useCallback((metrics: PerformanceMetrics) => {
+    setMetrics(metrics);
+  }, []);
+
   // Initialize console service
   useEffect(() => {
     registerBuiltInCommands();
     
     // Subscribe to logs
-    const unsubscribeLogs = consoleService.subscribe(setLogs);
-    const unsubscribeMetrics = consoleService.subscribeToMetrics(setMetrics);
+    const unsubscribeLogs = consoleService.subscribe(handleLogsUpdate);
+    const unsubscribeMetrics = consoleService.subscribeToMetrics(handleMetricsUpdate);
     
     return () => {
       unsubscribeLogs();
       unsubscribeMetrics();
     };
-  }, []);
+  }, [handleLogsUpdate, handleMetricsUpdate]);
   
   // Auto-scroll to bottom
   useEffect(() => {
