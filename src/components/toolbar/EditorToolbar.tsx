@@ -3,7 +3,7 @@
  * 主编辑器工具栏，包含撤销/重做和其他全局操作
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button, Space, Tooltip, Divider } from 'antd';
 import {
   UndoOutlined,
@@ -27,6 +27,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   style,
   className
 }) => {
+  const [isCreatingEntity, setIsCreatingEntity] = useState(false);
   const canUndo = useEditorStore(state => state.canUndo);
   const canRedo = useEditorStore(state => state.canRedo);
   const commandManager = useEditorStore(state => state.commandManager);
@@ -47,8 +48,17 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
     redo();
   };
 
-  const handleCreateEntity = () => {
-    createEntity();
+  const handleCreateEntity = async () => {
+    if (!isCreatingEntity) {
+      setIsCreatingEntity(true);
+      try {
+        await createEntity();
+      } catch (error) {
+        console.error('Failed to create entity:', error);
+      } finally {
+        setIsCreatingEntity(false);
+      }
+    }
   };
 
   const handleDeleteSelected = () => {
@@ -168,6 +178,8 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
             icon={<FileAddOutlined />}
             size="small"
             onClick={handleCreateEntity}
+            disabled={isCreatingEntity}
+            loading={isCreatingEntity}
           />
         </Tooltip>
         

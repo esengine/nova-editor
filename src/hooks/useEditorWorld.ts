@@ -14,14 +14,15 @@ export function useEditorWorld() {
   const initializeWorld = useEditorStore(state => state.initializeWorld);
   const updateWorldStats = useEditorStore(state => state.updateWorldStats);
   const world = useEditorStore(state => state.world.instance);
+  const isLoading = useEditorStore(state => state.isLoading);
   const initialized = useRef(false);
 
   useEffect(() => {
-    if (!initialized.current) {
-      initializeWorld();
+    if (!initialized.current && !world && !isLoading) {
       initialized.current = true;
+      initializeWorld().catch(console.error);
     }
-  }, [initializeWorld]);
+  }, [initializeWorld, world, isLoading]);
 
   useEffect(() => {
     if (!world) return;

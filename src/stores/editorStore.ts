@@ -25,6 +25,8 @@ import {
 import { EditorWorld, EditorStoreIntegration } from '../ecs';
 import { workspaceService } from '../services/WorkspaceService';
 import { CommandManager, CreateEntityCommand, DeleteEntityCommand } from '../core/commands';
+import { ThreeRenderPlugin } from '@esengine/nova-ecs-render-three';
+import { usePluginStore, PluginLoadingState } from './pluginStore';
 import type { EntityId } from '@esengine/nova-ecs';
 
 /**
@@ -105,7 +107,8 @@ interface EditorActions {
   setSnapSize: (size: number) => void;
   
   // World actions | 世界操作
-  initializeWorld: () => void;
+  initializeWorld: () => Promise<void>;
+  initializePlugins: () => Promise<void>;
   updateWorldStats: () => void;
   
   // Entity actions | 实体操作
@@ -522,33 +525,111 @@ export const useEditorStore = create<EditorState & EditorActions>()(
       }),
 
       // World actions implementation
-      initializeWorld: () => set((state) => {
-        // Create EditorWorld instance
-        const editorWorld = new EditorWorld();
+      initializeWorld: async () => {
+        const pluginStore = usePluginStore.getState();
         
-        // Create integration layer
-        const integration = new EditorStoreIntegration(editorWorld, {
-          setState: (updater: any) => {
-            if (typeof updater === 'function') {
-              set((state) => updater(state));
-            } else {
-              set(updater);
-            }
-          },
-          getState: get
-        } as any);
+        try {
+          set((state) => {
+            state.isLoading = true;
+          });
+
+          // Create EditorWorld instance
+          const editorWorld = new EditorWorld();
+          
+          // Create integration layer
+          const integration = new EditorStoreIntegration(editorWorld, {
+            setState: (updater: any) => {
+              if (typeof updater === 'function') {
+                set((state) => updater(state));
+              } else {
+                set(updater);
+              }
+            },
+            getState: get
+          } as any);
+          
+          // Store integration reference
+          (editorWorld as any)._integration = integration;
+          
+          set((state) => {
+            state.world.instance = editorWorld;
+            state.world.entityHierarchy = editorWorld.getEntityHierarchy();
+          });
+
+          // Install plugins
+          await get().initializePlugins();
+
+          set((state) => {
+            state.isLoading = false;
+          });
+
+          pluginStore.setInitialized(true);
+        } catch (error) {
+          console.error('Failed to initialize world:', error);
+          set((state) => {
+            state.isLoading = false;
+          });
+          pluginStore.setInitialized(false, error instanceof Error ? error.message : 'Unknown error');
+          throw error;
+        }
+      },
+
+      // Initialize plugins
+      initializePlugins: async () => {
+        const state = get() as any;
+        const pluginStore = usePluginStore.getState();
         
-        // Store integration reference
-        (editorWorld as any)._integration = integration;
+        if (!state.world.instance) {
+          throw new Error('World instance not found');
+        }
+
+        const editorWorld = state.world.instance as EditorWorld;
         
-        state.world.instance = editorWorld;
-        
-        // Initialize hierarchy data for empty world
-        state.world.entityHierarchy = editorWorld.getEntityHierarchy();
-        
-        // Initialize with empty world (no sample data)
-        // integration.getStoreActions().initializeSampleData();
-      }),
+        // Define plugins to install
+        const pluginsToInstall = [
+          {
+            name: 'three-render',
+            factory: () => new ThreeRenderPlugin({
+              createDefaultEntities: true,
+              enableShadows: true,
+              enableAntialiasing: true,
+              backgroundColor: '#2c2c2c'
+            })
+          }
+        ];
+
+        pluginStore.startLoading(pluginsToInstall.map(p => p.name));
+
+        // Install plugins sequentially
+        for (const pluginConfig of pluginsToInstall) {
+          try {
+            const startTime = performance.now();
+            
+            pluginStore.setPluginState(pluginConfig.name, PluginLoadingState.Loading);
+            
+            const plugin = pluginConfig.factory();
+            pluginStore.registerPlugin(plugin);
+            
+            // Install plugin
+            await editorWorld.plugins.install(plugin);
+            
+            const loadTime = performance.now() - startTime;
+            pluginStore.setPluginLoadTime(pluginConfig.name, loadTime);
+            pluginStore.setPluginState(pluginConfig.name, PluginLoadingState.Loaded);
+            
+            console.log(`Plugin '${pluginConfig.name}' loaded successfully in ${loadTime.toFixed(2)}ms`);
+          } catch (error) {
+            console.error(`Failed to load plugin '${pluginConfig.name}':`, error);
+            pluginStore.setPluginState(
+              pluginConfig.name, 
+              PluginLoadingState.Failed, 
+              error instanceof Error ? error.message : 'Unknown error'
+            );
+          }
+        }
+
+        pluginStore.finishLoading();
+      },
 
       updateWorldStats: () => set((state) => {
         if (state.world.instance) {
@@ -565,18 +646,12 @@ export const useEditorStore = create<EditorState & EditorActions>()(
       createEntity: async (name?: string) => {
         const state = get() as any;
         if (state.world.instance) {
+          // Use command system for undo/redo support
           const command = new CreateEntityCommand(state.world.instance, name);
           await state.executeCommand(command);
           
-          // Update hierarchy immediately after entity creation
-          const integration = state.world.instance._integration;
-          if (integration) {
-            const hierarchy = state.world.instance.getEntityHierarchy();
-            set((state) => {
-              state.world.entityHierarchy = hierarchy;
-              state.forceUpdateTrigger++;
-            });
-          }
+          // Hierarchy update is handled by EditorStoreIntegration event listeners
+          // No need to manually update here to avoid double updates
         }
       },
 

@@ -13,7 +13,7 @@ import {
   Slider,
   Breadcrumb,
   Upload,
-  message,
+  App,
   Tabs,
   Tree,
   Typography,
@@ -259,6 +259,7 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
   style,
   className
 }) => {
+  const { message } = App.useApp();
   const assetBrowser = useEditorStore(state => state.assetBrowser);
   const {
     navigateToFolder,

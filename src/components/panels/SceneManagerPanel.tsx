@@ -16,7 +16,7 @@ import {
   Tag,
   Tabs,
   Progress,
-  message,
+  App,
   Drawer
 } from 'antd';
 import {
@@ -60,6 +60,7 @@ export const SceneManagerPanel: React.FC<SceneManagerPanelProps> = ({
   style,
   className
 }) => {
+  const { message } = App.useApp();
   const world = useEditorStore(state => state.world.instance);
   const theme = useEditorStore(state => state.theme);
   

@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Dropdown, message } from 'antd';
+import { Dropdown, App } from 'antd';
 import {
   FileOutlined,
   FolderOpenOutlined,
@@ -20,6 +20,7 @@ export interface MainMenuProps {
 
 export const MainMenu: React.FC<MainMenuProps> = ({ theme }) => {
   const { saveWorkspace, resetWorkspace } = useEditorStore();
+  const { message } = App.useApp();
 
   // File menu items
   const fileMenuItems = [

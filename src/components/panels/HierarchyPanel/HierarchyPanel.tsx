@@ -78,6 +78,7 @@ export const HierarchyPanel: React.FC<HierarchyPanelProps> = ({
   const [expandedKeys, setExpandedKeys] = useState<string[]>(['root']);
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [newEntityName, setNewEntityName] = useState('');
+  const [isCreatingEntity, setIsCreatingEntity] = useState(false);
 
   // Convert NovaECS entity hierarchy to tree nodes
   const entityTreeNodes: EntityTreeNode[] = useMemo(() => {
@@ -153,17 +154,25 @@ export const HierarchyPanel: React.FC<HierarchyPanelProps> = ({
   };
 
   // Handle entity creation | 处理实体创建
-  const handleCreateEntity = (): void => {
-    if (newEntityName.trim()) {
-      createEntity(newEntityName);
-      message.success(`Created entity: ${newEntityName}`);
-      setNewEntityName('');
-      setIsCreateModalVisible(false);
-      
-      dispatchEvent(EditorEventType.SceneChanged, { 
-        action: 'create', 
-        entityName: newEntityName 
-      });
+  const handleCreateEntity = async (): Promise<void> => {
+    if (newEntityName.trim() && !isCreatingEntity) {
+      setIsCreatingEntity(true);
+      try {
+        await createEntity(newEntityName);
+        message.success(`Created entity: ${newEntityName}`);
+        setNewEntityName('');
+        setIsCreateModalVisible(false);
+        
+        dispatchEvent(EditorEventType.SceneChanged, { 
+          action: 'create', 
+          entityName: newEntityName 
+        });
+      } catch (error) {
+        console.error('Failed to create entity:', error);
+        message.error('Failed to create entity');
+      } finally {
+        setIsCreatingEntity(false);
+      }
     }
   };
 
@@ -320,6 +329,8 @@ export const HierarchyPanel: React.FC<HierarchyPanelProps> = ({
         }}
         okText="Create"
         cancelText="Cancel"
+        confirmLoading={isCreatingEntity}
+        okButtonProps={{ disabled: !newEntityName.trim() || isCreatingEntity }}
       >
         <Input
           placeholder="Enter entity name..."

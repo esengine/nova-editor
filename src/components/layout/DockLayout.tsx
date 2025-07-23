@@ -70,6 +70,43 @@ export const DockLayout: React.FC<DockLayoutProps> = ({
   // const theme = useEditorStore(state => state.theme);
   const layout = useEditorStore(state => state.layout);
   const visiblePanels = layout.panels.filter(panel => panel.visible);
+  
+  // State to trigger re-calculation on window resize
+  const [windowDimensions, setWindowDimensions] = React.useState({
+    width: window.innerWidth,
+    height: window.innerHeight
+  });
+
+  // Calculate responsive panel sizes based on viewport dimensions
+  const calculatePanelSize = React.useCallback(() => {
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Use percentage-based sizing that adapts to screen size and DPI
+    const leftPanelSize = Math.max(120, Math.min(160, viewportWidth * 0.04)); // 4% of viewport, min 120px, max 160px
+    const rightPanelSize = Math.max(120, Math.min(180, viewportWidth * 0.05)); // 5% of viewport, min 120px, max 180px
+    
+    // Calculate console panel height based on viewport height and DPI
+    // Use smaller percentage for console to give more space to scene
+    const consoleHeight = Math.max(150, Math.min(300, viewportHeight * 0.15)); // 15% of viewport height, min 150px, max 300px
+    
+    return { leftPanelSize, rightPanelSize, consoleHeight };
+  }, []);
+
+  const { leftPanelSize, rightPanelSize, consoleHeight } = calculatePanelSize();
+
+  // Listen for window resize events
+  React.useEffect(() => {
+    const handleResize = () => {
+      setWindowDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Create dock layout data structure
   const dockLayoutData: LayoutData = React.useMemo(() => {
@@ -120,7 +157,7 @@ export const DockLayout: React.FC<DockLayoutProps> = ({
           // Left panel group
           {
             mode: 'vertical',
-            size: 300,
+            size: leftPanelSize,
             children: [
               {
                 tabs: [
@@ -143,7 +180,7 @@ export const DockLayout: React.FC<DockLayoutProps> = ({
               },
               // Bottom panels (conditionally rendered)
               ...(bottomPanelTabs.length > 0 ? [{
-                size: 250,
+                size: consoleHeight,
                 tabs: bottomPanelTabs
               }] : [])
             ]
@@ -151,7 +188,7 @@ export const DockLayout: React.FC<DockLayoutProps> = ({
           // Right panel group
           {
             mode: 'vertical',
-            size: 300,
+            size: rightPanelSize,
             children: [
               {
                 tabs: [
@@ -168,7 +205,7 @@ export const DockLayout: React.FC<DockLayoutProps> = ({
         ]
       }
     };
-  }, [visiblePanels]);
+  }, [visiblePanels, leftPanelSize, rightPanelSize, consoleHeight, windowDimensions]);
 
 
   return (

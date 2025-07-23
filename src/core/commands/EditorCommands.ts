@@ -33,7 +33,11 @@ export class CreateEntityCommand extends BaseCommand {
       this.entityName || `Entity_${entity.id}`
     ));
 
-    console.log(`Created entity ${this.createdEntityId}`);
+    // Emit entity created event for EditorStoreIntegration to handle
+    this.world.editorEvents.emit('entityCreated', {
+      entityId: entity.id,
+      name: this.entityName || `Entity_${entity.id}`
+    });
   }
 
   undo(): void {

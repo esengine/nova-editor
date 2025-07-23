@@ -113,11 +113,11 @@ export class EditorStoreIntegration {
         this._world.clearSelection();
       },
 
-      // Entity creation
+      // Entity creation (for direct internal use, UI should use store actions)
       createEntity: (name?: string) => {
+        console.warn('EditorStoreIntegration.createEntity called directly - prefer using store actions');
         const entityName = name || `Entity_${Date.now()}`;
         const entity = this._world.createEntity();
-        
         
         // Add editor metadata component
         entity.addComponent(new EditorMetadataComponent(entityName));
@@ -243,10 +243,10 @@ export class EditorStoreIntegration {
 
       getWorld: () => this._world,
 
-      // Initialize with sample data
+      // Initialize with sample data (removed to prevent auto-creation)
       initializeSampleData: () => {
-        this._createSampleEntities();
-        this._updateHierarchy();
+        // Sample data creation disabled
+        console.log('Sample data creation is disabled');
       }
     };
   }
@@ -303,39 +303,6 @@ export class EditorStoreIntegration {
     }
   }
 
-  /**
-   * Create sample entities for testing
-   * 创建用于测试的示例实体
-   */
-  private _createSampleEntities(): void {
-    // Player entity
-    const player = this._world.createNamedEntity('Player');
-    player.addComponent(new TransformComponent({ x: 0, y: 0.5, z: 0 }));
-    player.addComponent(new MeshRendererComponent('DefaultMaterial', true, true, 'box'));
-    player.addComponent(new BoxColliderComponent());
-
-    // Enemy entity
-    const enemy = this._world.createNamedEntity('Enemy');
-    enemy.addComponent(new TransformComponent({ x: 2, y: 0.5, z: 2 }));
-    enemy.addComponent(new MeshRendererComponent('EnemyMaterial', true, true, 'sphere'));
-
-    // Ground entity
-    const ground = this._world.createNamedEntity('Ground');
-    ground.addComponent(new TransformComponent(
-      { x: 0, y: -0.5, z: 0 },
-      { x: 0, y: 0, z: 0 },
-      { x: 5, y: 0.1, z: 5 }
-    ));
-    ground.addComponent(new MeshRendererComponent('GroundMaterial', false, true, 'box'));
-
-    // Light entity
-    const light = this._world.createNamedEntity('DirectionalLight');
-    light.addComponent(new TransformComponent(
-      { x: 0, y: 5, z: 0 },
-      { x: -45, y: 0, z: 0 }
-    ));
-    light.addComponent(new LightComponent());
-  }
 
   /**
    * Dispose integration and cleanup

@@ -5,7 +5,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Editor, type Monaco } from '@monaco-editor/react';
-import { Button, Space, message, Tabs, Upload, Modal, App } from 'antd';
+import { Button, Space, Tabs, Upload, Modal, App } from 'antd';
 import {
   SaveOutlined,
   UndoOutlined,
@@ -32,7 +32,7 @@ export const CodeEditorPanel: React.FC<CodeEditorPanelProps> = ({
   style,
   className
 }) => {
-  const { modal } = App.useApp();
+  const { modal, message } = App.useApp();
   const theme = useEditorStore(state => state.theme);
   const editorTheme = 'vs-dark';
   const [isFullscreen, setIsFullscreen] = useState(false);

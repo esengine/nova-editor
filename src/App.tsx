@@ -6,8 +6,10 @@
 import React from 'react';
 import { ConfigProvider, Layout, theme, App as AntdApp } from 'antd';
 import { useEditorStore } from './stores/editorStore';
+import { usePluginStore } from './stores/pluginStore';
 import { useEditorWorld } from './hooks/useEditorWorld';
 import { DockLayout } from './components/layout';
+import { PluginLoadingScreen } from './components/layout/PluginLoadingScreen';
 import { MainMenu } from './components/menu';
 import { EditorToolbar } from './components/toolbar';
 import './App.css';
@@ -26,11 +28,23 @@ function App(): React.ReactElement {
   const canUndo = useEditorStore(state => state.canUndo);
   const canRedo = useEditorStore(state => state.canRedo);
   
+  // Plugin store
+  const isPluginLoading = usePluginStore(state => state.isLoading);
+  const isPluginInitialized = usePluginStore(state => state.isInitialized);
+  
   // Initialize EditorWorld
   useEditorWorld();
 
-  // Global keyboard shortcuts
+  // Show loading screen while plugins are loading
+  const showLoadingScreen = isLoading || isPluginLoading || !isPluginInitialized;
+
+  // Global event handlers
   React.useEffect(() => {
+    // Disable context menu (right-click menu) globally
+    const handleContextMenu = (event: MouseEvent) => {
+      event.preventDefault();
+    };
+
     const handleKeyDown = (event: KeyboardEvent) => {
       // Only handle if target is not an input or textarea
       const target = event.target as HTMLElement;
@@ -57,8 +71,13 @@ function App(): React.ReactElement {
       }
     };
 
+    window.addEventListener('contextmenu', handleContextMenu);
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      window.removeEventListener('contextmenu', handleContextMenu);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [undo, redo, canUndo, canRedo]);
 
   return (
@@ -179,6 +198,9 @@ function App(): React.ReactElement {
           <DockLayout />
         </Content>
       </Layout>
+      
+      {/* Plugin Loading Screen */}
+      <PluginLoadingScreen visible={showLoadingScreen} />
       </AntdApp>
     </ConfigProvider>
   );
