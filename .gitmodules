@@ -19,3 +19,15 @@
 [submodule "packages/nova-ecs-render-three"]
 	path = packages/nova-ecs-render-three
 	url = https://github.com/esengine/nova-ecs-render-three.git
+[submodule "packages/nova-ecs-animation"]
+	path = packages/nova-ecs-animation
+	url = https://github.com/esengine/nova-ecs-animation.git
+[submodule "packages/nova-ecs-audio-web"]
+	path = packages/nova-ecs-audio-web
+	url = https://github.com/esengine/nova-ecs-audio-web.git
+[submodule "packages/nova-ecs-input-core"]
+	path = packages/nova-ecs-input-core
+	url = https://github.com/esengine/nova-ecs-input-core.git
+[submodule "packages/nova-ecs-ui"]
+	path = packages/nova-ecs-ui
+	url = https://github.com/esengine/nova-ecs-ui.git
