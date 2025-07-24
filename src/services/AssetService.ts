@@ -468,15 +468,7 @@ export class AssetService {
       // Check if running in Tauri environment
       const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
       
-      console.log('Asset scanning debug:', {
-        hasWindow: typeof window !== 'undefined',
-        hasTauriInternals: typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window,
-        isTauri,
-        projectPath
-      });
-      
       if (isTauri) {
-        console.log('Starting Tauri asset scanning...');
         await this.scanProjectAssetsTauri(projectPath);
       } else {
         // For browser environment, we can't easily scan file system
@@ -493,13 +485,11 @@ export class AssetService {
    * 使用Tauri文件系统扫描项目资源
    */
   private async scanProjectAssetsTauri(projectPath: string): Promise<void> {
-    console.log('scanProjectAssetsTauri called with path:', projectPath);
     try {
       const { readDir } = await import('@tauri-apps/plugin-fs');
       const { join } = await import('@tauri-apps/api/path');
 
       // Clear existing assets (optional - you might want to merge instead)
-      console.log('Clearing existing assets...');
       await this.clearAllAssets();
       
       // Scan multiple directories
@@ -509,17 +499,12 @@ export class AssetService {
       ];
       
       for (const { name, path } of directoriesToScan) {
-        console.log(`Checking if ${name} directory exists...`);
         try {
           const entries = await readDir(path);
-          console.log(`${name} directory contents:`, entries);
-          
           // Recursively scan directory
-          console.log(`Starting recursive scan of ${name}...`);
           await this.scanDirectoryRecursive(path, 'root');
-          console.log(`Recursive scan of ${name} completed`);
         } catch (dirError) {
-          console.warn(`${name} directory not found or not accessible:`, path, dirError);
+          // Silently skip directories that don't exist or aren't accessible
         }
       }
       

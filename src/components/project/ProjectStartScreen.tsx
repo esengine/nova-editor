@@ -215,30 +215,13 @@ export const ProjectStartScreen: React.FC<ProjectStartScreenProps> = ({
   };
 
   const handleOpenRecentProject = async (project: RecentProject) => {
-    console.log('handleOpenRecentProject called with:', {
-      projectName: project.name,
-      projectPath: project.path,
-      fullProject: project
-    });
-    
     try {
       const result = await projectService.openProjectByPath(project.path);
-      console.log('openProjectByPath returned:', {
-        resultPath: result?.path,
-        resultConfig: result?.config
-      });
-      
       if (result) {
-        console.log('Calling onProjectSelected with:', {
-          path: result.path,
-          configName: result.config.name
-        });
         onProjectSelected(result.path, result.config);
       }
     } catch (error) {
       console.error('Failed to open recent project:', error);
-      // Log user-friendly error message (alert not allowed in Tauri without permissions)
-      console.error(`Failed to open project "${project.name}": ${error instanceof Error ? error.message : String(error)}`);
       // Remove invalid project from recent list
       await projectService.removeFromRecentProjects(project.path);
       loadRecentProjects();

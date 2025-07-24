@@ -72,11 +72,6 @@ class ProjectService {
    * 创建新项目
    */
   async createProject(projectPath: string, config: ProjectConfig, template?: any): Promise<string> {
-    console.log('createProject called with:', {
-      projectPath,
-      configName: config.name
-    });
-    
     try {
       // Create initial entities based on template
       const defaultEntities = template?.defaultEntities || [
@@ -125,8 +120,6 @@ class ProjectService {
         await this.createProjectFilesBrowser(projectPath, config, mainScene, assetFolders);
       }
       
-      console.log('createProject: actualProjectPath before adding to recent:', actualProjectPath);
-      
       // Add to recent projects
       await this.addToRecentProjects({
         name: config.name,
@@ -136,7 +129,6 @@ class ProjectService {
         lastOpened: Date.now()
       });
 
-      console.log('createProject: returning actualProjectPath:', actualProjectPath);
       return actualProjectPath;
     } catch (error) {
       console.error('Failed to create project:', error);
@@ -881,32 +873,15 @@ Generated with Nova Editor v${config.version}
       // Check if running in Tauri environment
       const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
       
-      console.log('openProjectByPath debug:', {
-        hasWindow: typeof window !== 'undefined',
-        hasTauriInternals: typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window,
-        isTauri,
-        projectPath
-      });
-      
       if (isTauri) {
-        console.log('openProjectByPath: Using Tauri file system, projectPath:', projectPath);
-        
         // Use Tauri file system to read project config
         const { readTextFile } = await import('@tauri-apps/plugin-fs');
         const { join } = await import('@tauri-apps/api/path');
         
         try {
           const configPath = await join(projectPath, 'nova.config.json');
-          console.log('openProjectByPath: Config path resolved to:', configPath);
-          
           const configContent = await readTextFile(configPath);
-          console.log('openProjectByPath: Config file read successfully');
-          
           const projectConfig = JSON.parse(configContent);
-          console.log('openProjectByPath: Project config parsed:', {
-            name: projectConfig.name,
-            version: projectConfig.version
-          });
           
           // Update last opened time
           await this.addToRecentProjects({
@@ -917,7 +892,6 @@ Generated with Nova Editor v${config.version}
             lastOpened: Date.now()
           });
           
-          console.log('openProjectByPath: Returning result with path:', projectPath);
           return {
             path: projectPath,
             config: projectConfig

@@ -40,12 +40,6 @@ function App(): React.ReactElement {
 
   // Handle project selection from start screen
   const handleProjectSelected = async (selectedProjectPath: string, projectConfig: ProjectConfig) => {
-    console.log('handleProjectSelected called with:', {
-      selectedProjectPath,
-      projectConfigName: projectConfig.name,
-      projectConfig
-    });
-    
     setProject(projectConfig);
     setProjectPath(selectedProjectPath);
     
@@ -57,8 +51,6 @@ function App(): React.ReactElement {
       useEditorStore.setState((state) => {
         state.forceUpdateTrigger++;
       });
-      
-      console.log('Project assets scanned successfully');
     } catch (error) {
       console.error('Failed to scan project assets:', error);
     }
