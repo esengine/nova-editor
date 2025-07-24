@@ -1,7 +1,3 @@
-/**
- * Nova Editor main application component
- * Nova编辑器主应用组件
- */
 
 import React from 'react';
 import { ConfigProvider, Layout, theme, App as AntdApp } from 'antd';
@@ -46,6 +42,9 @@ function App(): React.ReactElement {
     setProject(projectConfig);
     setProjectPath(selectedProjectPath);
   };
+
+  // System components initialization will be redesigned
+  // TODO: Implement proper system component initialization
 
   // Initialize EditorWorld only when project is loaded
   const hasProject = !!(project && projectPath);

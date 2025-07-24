@@ -24,11 +24,16 @@
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "preview": "vite preview",
-    "docs": "typedoc"
+    "docs": "typedoc",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "dependencies": {
     "@ant-design/icons": "^5.4.0",
     "@esengine/nova-ecs": "file:packages/nova-ecs",
+    "@esengine/nova-ecs-core": "file:packages/nova-ecs-core",
+    "@esengine/nova-ecs-editor": "file:packages/nova-ecs-editor",
     "@esengine/nova-ecs-math": "file:packages/nova-ecs-math",
     "@esengine/nova-ecs-physics-box2d": "file:packages/nova-ecs-physics-box2d",
     "@esengine/nova-ecs-physics-core": "file:packages/nova-ecs-physics-core",
@@ -37,6 +42,11 @@
     "@floating-ui/react": "^0.26.0",
     "@monaco-editor/react": "^4.6.0",
     "@pixi/react": "^7.1.0",
+    "@tauri-apps/api": "^2.7.0",
+    "@tauri-apps/plugin-dialog": "^2.3.1",
+    "@tauri-apps/plugin-fs": "^2.4.1",
+    "@tauri-apps/plugin-shell": "^2.3.0",
+    "@tauri-apps/plugin-window-state": "^2.4.0",
     "antd": "^5.20.0",
     "file-saver": "^2.0.5",
     "idb": "^8.0.0",
@@ -63,6 +73,7 @@
     "zustand": "^4.5.0"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.7.1",
     "@testing-library/jest-dom": "^6.0.0",
     "@testing-library/react": "^16.0.0",
     "@types/lodash-es": "^4.17.0",

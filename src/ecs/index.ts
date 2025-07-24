@@ -6,12 +6,9 @@
 export { EditorWorld } from './EditorWorld';
 export type { EntityHierarchyNode } from './EditorWorld';
 
-export {
-  EditorMetadataComponent,
-  TransformComponent,
-  MeshRendererComponent,
-  BoxColliderComponent
-} from './EditorWorld';
+export { BoxColliderComponent } from './EditorWorld';
+export { EditorMetadataComponent, TransformComponent } from '@esengine/nova-ecs-core';
+export { MeshRendererComponent } from '@esengine/nova-ecs-render-three';
 
 export { EditorEvents } from './EditorEvents';
 export type {

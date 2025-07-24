@@ -4,6 +4,7 @@
  */
 
 import { World, Entity, Component, type EntityId } from '@esengine/nova-ecs';
+import { EditorMetadataComponent } from '@esengine/nova-ecs-core';
 import { EditorEvents } from './EditorEvents';
 
 /**
@@ -157,15 +158,14 @@ export class EditorWorld extends World {
 
     // Create hierarchy nodes
     for (const entity of entities) {
-      const metadata = entity.getComponent(EditorMetadataComponent);
-      const transform = entity.getComponent(TransformComponent);
+      const metadata = entity.getComponent(EditorMetadataComponent) as EditorMetadataComponent | undefined;
       
       const node: EntityHierarchyNode = {
         id: entity.id,
         name: metadata?.name || `Entity_${entity.id}`,
         active: entity.active,
         children: [],
-        parentId: transform?.parentId || null
+        parentId: null
       };
       
       hierarchyMap.set(entity.id, node);
@@ -190,51 +190,6 @@ export class EditorWorld extends World {
   override dispose(): void {
     this._editorEvents.removeAllListeners();
     super.dispose();
-  }
-}
-
-/**
- * Editor metadata component for entity names and editor-specific data
- * 编辑器元数据组件，用于实体名称和编辑器特定数据
- */
-export class EditorMetadataComponent extends Component {
-  constructor(
-    public name: string = '',
-    public tags: string[] = [],
-    public layer: string = 'Default',
-    public isStatic: boolean = false
-  ) {
-    super();
-  }
-}
-
-/**
- * Transform component for 3D position, rotation, and scale
- * 3D位置、旋转和缩放的变换组件
- */
-export class TransformComponent extends Component {
-  constructor(
-    public position: { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 },
-    public rotation: { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 },
-    public scale: { x: number; y: number; z: number } = { x: 1, y: 1, z: 1 },
-    public parentId: EntityId | null = null
-  ) {
-    super();
-  }
-}
-
-/**
- * Mesh renderer component for 3D rendering
- * 3D渲染的网格渲染器组件
- */
-export class MeshRendererComponent extends Component {
-  constructor(
-    public material: string = 'DefaultMaterial',
-    public castShadows: boolean = true,
-    public receiveShadows: boolean = true,
-    public meshType: 'box' | 'sphere' | 'plane' | 'custom' = 'box'
-  ) {
-    super();
   }
 }
 

@@ -6,7 +6,8 @@
 import { BaseCommand, type Command } from './Command';
 import type { EditorWorld } from '../../ecs/EditorWorld';
 import type { Component } from '@esengine/nova-ecs';
-import { TransformComponent, MeshRendererComponent, EditorMetadataComponent } from '../../ecs';
+import { TransformComponent, EditorMetadataComponent } from '@esengine/nova-ecs-core';
+import { MeshRendererComponent } from '../../ecs';
 import type { Vector3 } from '../../types';
 
 /**

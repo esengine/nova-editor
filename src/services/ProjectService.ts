@@ -73,12 +73,6 @@ class ProjectService {
    */
   async createProject(projectPath: string, config: ProjectConfig, template?: any): Promise<string> {
     try {
-      // In a real implementation, this would:
-      // 1. Create project directory structure
-      // 2. Write project configuration file
-      // 3. Initialize default assets and scenes
-      // 4. Set up build configuration
-      
       // Create initial entities based on template
       const defaultEntities = template?.defaultEntities || [
         { name: 'MainCamera', components: ['Transform', 'Camera'] }
@@ -102,41 +96,40 @@ class ProjectService {
           backgroundColor: config.settings.rendering.backgroundColor
         }
       };
-      
-      // For now, we'll simulate this with localStorage for demo purposes
-      const projectData = {
-        config,
-        template: template?.id || 'empty',
-        createdAt: Date.now(),
-        structure: {
-          assets: {
-            // Create recommended asset folders based on template
-            ...(template?.recommendedAssets?.reduce((acc: any, assetType: string) => {
-              acc[assetType] = {};
-              return acc;
-            }, {}) || {})
-          },
-          scenes: {
-            'main.scene': mainScene
-          },
-          scripts: {},
-          settings: config.settings
-        }
-      };
 
-      // Store project data (in real app, this would be file system operations)
-      localStorage.setItem(`nova-project-${projectPath}`, JSON.stringify(projectData));
+      // Determine the asset folders based on template
+      const assetFolders = template?.recommendedAssets || ['sprites', 'textures', 'audio'];
+
+      // Check if running in Tauri environment for native file operations
+      const isTauri = typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_METADATA__' in window);
+      
+      console.log('Creating project:', { 
+        projectPath, 
+        configName: config.name, 
+        isTauri, 
+        hasDirectoryHandle: !!this.selectedDirectoryHandle 
+      });
+      
+      let actualProjectPath = projectPath;
+      
+      if (isTauri) {
+        // Use Tauri native file system operations
+        actualProjectPath = await this.createProjectFilesTauri(projectPath, config, mainScene, assetFolders);
+      } else {
+        // Use browser File System Access API or IndexedDB fallback
+        await this.createProjectFilesBrowser(projectPath, config, mainScene, assetFolders);
+      }
       
       // Add to recent projects
       await this.addToRecentProjects({
         name: config.name,
-        path: projectPath,
+        path: actualProjectPath,
         version: config.version,
         description: config.description,
         lastOpened: Date.now()
       });
 
-      return projectPath;
+      return actualProjectPath;
     } catch (error) {
       console.error('Failed to create project:', error);
       throw new Error(`Failed to create project: ${error}`);
@@ -144,18 +137,385 @@ class ProjectService {
   }
 
   /**
+   * Create project files using Tauri native file system
+   * 使用Tauri原生文件系统创建项目文件
+   */
+  private async createProjectFilesTauri(projectPath: string, config: ProjectConfig, mainScene: any, assetFolders: string[]): Promise<string> {
+    const { mkdir, writeTextFile } = await import('@tauri-apps/plugin-fs');
+    const { join } = await import('@tauri-apps/api/path');
+
+    try {
+      console.log('Creating Tauri project at:', projectPath);
+      
+      // Create project subdirectory with sanitized name
+      const projectName = config.name.replace(/[^a-zA-Z0-9-_]/g, '_');
+      const fullProjectPath = await join(projectPath, projectName);
+      
+      console.log('Full project path:', fullProjectPath);
+      
+      // Create main project directory
+      await mkdir(fullProjectPath, { recursive: true });
+
+      // Create subdirectories
+      const directories = [
+        'assets',
+        'scenes', 
+        'scripts',
+        'settings',
+        ...assetFolders.map(folder => `assets/${folder}`)
+      ];
+
+      for (const dir of directories) {
+        const dirPath = await join(fullProjectPath, dir);
+        await mkdir(dirPath, { recursive: true });
+      }
+
+      // Write nova.config.json
+      const configPath = await join(fullProjectPath, 'nova.config.json');
+      const projectConfig = {
+        name: config.name,
+        version: config.version,
+        description: config.description,
+        author: config.author,
+        createdAt: config.createdAt,
+        modifiedAt: Date.now(),
+        componentDiscovery: {
+          packages: [
+            {
+              package: '@esengine/nova-ecs-core',
+              description: 'Core ECS components (Transform, Metadata, etc.)',
+              required: true
+            },
+            {
+              package: '@esengine/nova-ecs-render-three',
+              description: 'Three.js rendering components',
+              required: false
+            }
+          ]
+        },
+        plugins: [],
+        settings: config.settings
+      };
+      await writeTextFile(configPath, JSON.stringify(projectConfig, null, 2));
+
+      // Write main.scene file
+      const scenePath = await join(fullProjectPath, 'scenes', 'main.scene');
+      await writeTextFile(scenePath, JSON.stringify(mainScene, null, 2));
+
+      // Create .gitignore
+      const gitignorePath = await join(fullProjectPath, '.gitignore');
+      const gitignoreContent = `# Dependencies
+node_modules/
+*.log
+npm-debug.log*
+
+# Build outputs
+dist/
+build/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Nova Editor temp files
+.nova-temp/
+`;
+      await writeTextFile(gitignorePath, gitignoreContent);
+
+      // Create README.md
+      const readmePath = await join(fullProjectPath, 'README.md');
+      const readmeContent = `# ${config.name}
+
+${config.description}
+
+## Getting Started
+
+This is a Nova Editor project. Open it in Nova Editor to start developing your game.
+
+## Project Structure
+
+- \`assets/\` - Game assets (sprites, textures, audio, etc.)
+- \`scenes/\` - Scene files
+- \`scripts/\` - Custom scripts and components
+- \`nova.config.json\` - Project configuration
+
+## Author
+
+${config.author || 'Unknown'}
+
+---
+
+Generated with Nova Editor v${config.version}
+`;
+      await writeTextFile(readmePath, readmeContent);
+      
+      console.log(`✅ Tauri project "${config.name}" created successfully at:`, fullProjectPath);
+      
+      // Return the full project path for future reference
+      return fullProjectPath;
+
+    } catch (error) {
+      console.error('Error creating project files with Tauri:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create project files using browser File System Access API or fallback
+   * 使用浏览器文件系统访问API或后备方案创建项目文件
+   */
+  private async createProjectFilesBrowser(projectPath: string, config: ProjectConfig, mainScene: any, assetFolders: string[]): Promise<void> {
+    try {
+      console.log('createProjectFilesBrowser called:', { 
+        projectPath, 
+        hasAPI: 'showDirectoryPicker' in window,
+        hasHandle: !!this.selectedDirectoryHandle,
+        configName: config.name
+      });
+      
+      // Check if File System Access API is supported and we have a directory handle
+      if ('showDirectoryPicker' in window && this.selectedDirectoryHandle) {
+        console.log('Using File System Access API...');
+        // Use the previously selected directory handle
+        const dirHandle = this.selectedDirectoryHandle;
+        
+        // If projectPath includes the project name, create a subdirectory
+        let projectDirHandle = dirHandle;
+        const projectName = config.name.replace(/[^a-zA-Z0-9-_]/g, '_'); // Sanitize project name
+        
+        try {
+          // Create project subdirectory if it doesn't exist
+          projectDirHandle = await dirHandle.getDirectoryHandle(projectName, { create: true });
+        } catch (error) {
+          console.warn('Could not create project subdirectory, using selected directory directly:', error);
+          // Use the selected directory directly
+        }
+
+        // Create subdirectories
+        const directories = ['assets', 'scenes', 'scripts', 'settings'];
+        for (const dir of directories) {
+          await projectDirHandle.getDirectoryHandle(dir, { create: true });
+        }
+
+        // Create asset subdirectories
+        const assetsHandle = await projectDirHandle.getDirectoryHandle('assets');
+        for (const folder of assetFolders) {
+          await assetsHandle.getDirectoryHandle(folder, { create: true });
+        }
+
+        // Write nova.config.json
+        const configFileHandle = await projectDirHandle.getFileHandle('nova.config.json', { create: true });
+        const configWritable = await configFileHandle.createWritable();
+        const projectConfig = {
+          name: config.name,
+          version: config.version,
+          description: config.description,
+          author: config.author,
+          createdAt: config.createdAt,
+          modifiedAt: Date.now(),
+          componentDiscovery: {
+            packages: [
+              {
+                package: '@esengine/nova-ecs-core',
+                description: 'Core ECS components (Transform, Metadata, etc.)',
+                required: true
+              },
+              {
+                package: '@esengine/nova-ecs-render-three',
+                description: 'Three.js rendering components',
+                required: false
+              }
+            ]
+          },
+          plugins: [],
+          settings: config.settings
+        };
+        await configWritable.write(JSON.stringify(projectConfig, null, 2));
+        await configWritable.close();
+
+        // Write main.scene file
+        const scenesHandle = await projectDirHandle.getDirectoryHandle('scenes');
+        const sceneFileHandle = await scenesHandle.getFileHandle('main.scene', { create: true });
+        const sceneWritable = await sceneFileHandle.createWritable();
+        await sceneWritable.write(JSON.stringify(mainScene, null, 2));
+        await sceneWritable.close();
+
+        // Create other files
+        await this.createAdditionalProjectFiles(projectDirHandle, config);
+        
+        console.log(`✅ Project "${config.name}" created successfully in:`, dirHandle.name);
+        
+        // Clear the stored handle after successful creation
+        this.selectedDirectoryHandle = null;
+
+      } else if ('showDirectoryPicker' in window && !this.selectedDirectoryHandle) {
+        // File System Access API is supported but no directory was selected
+        throw new Error('Please select a directory first by clicking the "Browse" button.');
+      } else {
+        // Fallback: Store in IndexedDB with structure information
+        const projectData = {
+          config,
+          mainScene,
+          assetFolders,
+          createdAt: Date.now(),
+          structure: {
+            directories: ['assets', 'scenes', 'scripts', 'settings', ...assetFolders.map(f => `assets/${f}`)],
+            files: {
+              'nova.config.json': {
+                name: config.name,
+                version: config.version,
+                description: config.description,
+                author: config.author,
+                createdAt: config.createdAt,
+                modifiedAt: Date.now(),
+                componentDiscovery: {
+                  packages: [
+                    {
+                      package: '@esengine/nova-ecs-core',
+                      description: 'Core ECS components (Transform, Metadata, etc.)',
+                      required: true
+                    },
+                    {
+                      package: '@esengine/nova-ecs-render-three',
+                      description: 'Three.js rendering components',
+                      required: false
+                    }
+                  ]
+                },
+                plugins: [],
+                settings: config.settings
+              },
+              'scenes/main.scene': mainScene
+            }
+          }
+        };
+
+        // Store in localStorage with structure info (as improved fallback)
+        localStorage.setItem(`nova-project-${projectPath}`, JSON.stringify(projectData));
+        
+        console.warn('File System Access API not supported, project structure stored in browser storage only.');
+        console.log('Project structure created:', projectData.structure.directories);
+      }
+
+    } catch (error) {
+      console.error('Error creating project files in browser:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create additional project files (README, .gitignore, etc.)
+   * 创建额外的项目文件
+   */
+  private async createAdditionalProjectFiles(dirHandle: any, config: ProjectConfig): Promise<void> {
+    try {
+      // Create .gitignore
+      const gitignoreHandle = await dirHandle.getFileHandle('.gitignore', { create: true });
+      const gitignoreWritable = await gitignoreHandle.createWritable();
+      const gitignoreContent = `# Dependencies
+node_modules/
+*.log
+npm-debug.log*
+
+# Build outputs
+dist/
+build/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Nova Editor temp files
+.nova-temp/
+`;
+      await gitignoreWritable.write(gitignoreContent);
+      await gitignoreWritable.close();
+
+      // Create README.md
+      const readmeHandle = await dirHandle.getFileHandle('README.md', { create: true });
+      const readmeWritable = await readmeHandle.createWritable();
+      const readmeContent = `# ${config.name}
+
+${config.description}
+
+## Getting Started
+
+This is a Nova Editor project. Open it in Nova Editor to start developing your game.
+
+## Project Structure
+
+- \`assets/\` - Game assets (sprites, textures, audio, etc.)
+- \`scenes/\` - Scene files
+- \`scripts/\` - Custom scripts and components
+- \`nova.config.json\` - Project configuration
+
+## Author
+
+${config.author || 'Unknown'}
+
+---
+
+Generated with Nova Editor v${config.version}
+`;
+      await readmeWritable.write(readmeContent);
+      await readmeWritable.close();
+
+    } catch (error) {
+      console.error('Error creating additional project files:', error);
+      // Don't throw - these are optional files
+    }
+  }
+
+  // Store the selected directory handle for reuse
+  private selectedDirectoryHandle: any = null;
+
+  /**
    * Select directory for project creation
    * 选择项目创建目录
    */
   async selectDirectory(): Promise<string | null> {
     try {
-      // Check if File System Access API is supported (Chrome 86+)
+      // Check if running in Tauri environment first
+      const isTauri = typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_METADATA__' in window);
+      
+      if (isTauri) {
+        // Use Tauri native directory dialog
+        try {
+          const { open } = await import('@tauri-apps/plugin-dialog');
+          const path = await open({
+            directory: true,
+            title: 'Select Project Directory'
+          });
+          
+          if (path && typeof path === 'string') {
+            localStorage.setItem('nova-editor-last-project-dir', path);
+            return path;
+          }
+          return null;
+        } catch (error) {
+          console.error('Tauri directory dialog error:', error);
+          throw error;
+        }
+      }
+      
+      // Fallback to browser File System Access API
       if ('showDirectoryPicker' in window) {
         try {
           const dirHandle = await (window as any).showDirectoryPicker({
             mode: 'readwrite',
             startIn: 'desktop'
           });
+          
+          // Store the handle for later use
+          this.selectedDirectoryHandle = dirHandle;
           
           // Get the directory path (this is simplified - in reality you'd work with the handle)
           const path = dirHandle.name;
@@ -307,6 +667,130 @@ class ProjectService {
    * Open project by path
    * 通过路径打开项目
    */
+  /**
+   * Open project from folder path (for Tauri native file dialog)
+   * 从文件夹路径打开项目（用于Tauri原生文件对话框）
+   */
+  async openProjectFromPath(folderPath: string): Promise<ProjectOpenResult | null> {
+    try {
+      // Check if running in Tauri environment
+      const isTauri = typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_METADATA__' in window);
+      
+      if (isTauri) {
+        // Use Tauri file system API to read project.json or nova.config.json
+        const { tauriFileService } = await import('./TauriFileService');
+        const { join } = await import('@tauri-apps/api/path');
+        
+        // Try to find project configuration file
+        const possibleConfigFiles = ['project.json', 'nova.config.json', 'package.json'];
+        let projectConfig: ProjectConfig | null = null;
+        
+        for (const configFile of possibleConfigFiles) {
+          const filePath = await join(folderPath, configFile);
+          if (await tauriFileService.exists(filePath)) {
+            const content = await tauriFileService.readTextFile(filePath);
+            const parsed = JSON.parse(content);
+            
+            if (configFile === 'package.json' && parsed.name) {
+              // Convert package.json to project config
+              projectConfig = {
+                name: parsed.name,
+                version: parsed.version || '1.0.0',
+                description: parsed.description || '',
+                author: parsed.author || '',
+                createdAt: Date.now(),
+                modifiedAt: Date.now(),
+                settings: {
+                  defaultScene: 'main.scene',
+                  physics: {
+                    gravity: { x: 0, y: -9.8 },
+                    timeStep: 1/60
+                  },
+                  rendering: {
+                    backgroundColor: '#2c2c2c',
+                    ambientLight: '#404040'
+                  }
+                }
+              };
+              break;
+            } else if (parsed.name || parsed.title) {
+              // Use as project config
+              projectConfig = {
+                name: parsed.name || parsed.title,
+                version: parsed.version || '1.0.0',
+                description: parsed.description || '',
+                author: parsed.author || '',
+                createdAt: parsed.createdAt || Date.now(),
+                modifiedAt: Date.now(),
+                settings: parsed.settings || {
+                  defaultScene: 'main.scene',
+                  physics: {
+                    gravity: { x: 0, y: -9.8 },
+                    timeStep: 1/60
+                  },
+                  rendering: {
+                    backgroundColor: '#2c2c2c',
+                    ambientLight: '#404040'
+                  }
+                }
+              };
+              break;
+            }
+          }
+        }
+        
+        if (!projectConfig) {
+          // Create a default project config based on folder name
+          const folderName = folderPath.split(/[\\/]/).pop() || 'Untitled Project';
+          projectConfig = {
+            name: folderName,
+            version: '1.0.0',
+            description: `Project in ${folderPath}`,
+            author: '',
+            createdAt: Date.now(),
+            modifiedAt: Date.now(),
+            settings: {
+              defaultScene: 'main.scene',
+              physics: {
+                gravity: { x: 0, y: -9.8 },
+                timeStep: 1/60
+              },
+              rendering: {
+                backgroundColor: '#2c2c2c',
+                ambientLight: '#404040'
+              }
+            }
+          };
+        }
+        
+        // At this point projectConfig should never be null
+        if (!projectConfig) {
+          throw new Error('Failed to create project configuration');
+        }
+        
+        // Update recent projects
+        await this.addToRecentProjects({
+          name: projectConfig.name,
+          path: folderPath,
+          version: projectConfig.version,
+          description: projectConfig.description,
+          lastOpened: Date.now()
+        });
+        
+        return {
+          path: folderPath,
+          config: projectConfig
+        };
+      } else {
+        // Fallback to browser method
+        return await this.openProjectByPath(folderPath);
+      }
+    } catch (error) {
+      console.error('Error opening project from path:', error);
+      throw error;
+    }
+  }
+
   async openProjectByPath(projectPath: string): Promise<ProjectOpenResult | null> {
     try {
       // In real implementation, this would read from file system

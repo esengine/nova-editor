@@ -146,7 +146,7 @@ export class EditorStoreIntegration {
       setEntityName: (entityId: EntityId, name: string) => {
         const entity = this._world.getEntity(entityId);
         if (entity) {
-          let metadata = entity.getComponent(EditorMetadataComponent);
+          let metadata = entity.getComponent(EditorMetadataComponent) as EditorMetadataComponent;
           if (!metadata) {
             // Create metadata component if it doesn't exist
             metadata = new EditorMetadataComponent(name);
@@ -315,12 +315,9 @@ export class EditorStoreIntegration {
 }
 
 // Import component types for type checking
-import { 
-  EditorMetadataComponent, 
-  TransformComponent, 
-  MeshRendererComponent, 
-  BoxColliderComponent 
-} from './EditorWorld';
+import { EditorMetadataComponent, TransformComponent } from '@esengine/nova-ecs-core';
+import { MeshRendererComponent } from '@esengine/nova-ecs-render-three';
+import { BoxColliderComponent } from './EditorWorld';
 import { Component } from '@esengine/nova-ecs';
 
 // Additional component types for editor functionality

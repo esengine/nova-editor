@@ -5,6 +5,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useEditorStore } from '../stores/editorStore';
+import { componentPreloader } from '../core/plugins/ComponentPreloader';
 
 /**
  * Hook to initialize and manage the EditorWorld instance
@@ -19,8 +20,16 @@ export function useEditorWorld(shouldInitialize: boolean = true) {
 
   useEffect(() => {
     if (shouldInitialize && !initialized.current && !world && !isLoading) {
-      initialized.current = true;
-      initializeWorld().catch(console.error);
+      const initializeWhenReady = () => {
+        if (componentPreloader.isLoaded()) {
+          initialized.current = true;
+          initializeWorld().catch(console.error);
+        } else {
+          setTimeout(initializeWhenReady, 50);
+        }
+      };
+      
+      initializeWhenReady();
     }
   }, [shouldInitialize, initializeWorld, world, isLoading]);
 

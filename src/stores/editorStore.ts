@@ -25,8 +25,8 @@ import {
 import { EditorWorld, EditorStoreIntegration } from '../ecs';
 import { workspaceService } from '../services/WorkspaceService';
 import { CommandManager, CreateEntityCommand, DeleteEntityCommand } from '../core/commands';
-import { ThreeRenderPlugin } from '@esengine/nova-ecs-render-three';
 import { usePluginStore, PluginLoadingState } from './pluginStore';
+import { ThreeRenderPlugin } from '@esengine/nova-ecs-render-three';
 import type { EntityId } from '@esengine/nova-ecs';
 
 /**
@@ -110,6 +110,7 @@ interface EditorActions {
   initializeWorld: () => Promise<void>;
   initializePlugins: () => Promise<void>;
   updateWorldStats: () => void;
+  
   
   // Entity actions | 实体操作
   createEntity: (name?: string) => void;
@@ -378,6 +379,7 @@ export const useEditorStore = create<EditorState & EditorActions>()(
       canUndo: false,
       canRedo: false,
       
+      
       events: [],
       forceUpdateTrigger: 0,
 
@@ -574,7 +576,6 @@ export const useEditorStore = create<EditorState & EditorActions>()(
         }
       },
 
-      // Initialize plugins
       initializePlugins: async () => {
         const state = get() as any;
         const pluginStore = usePluginStore.getState();
@@ -585,50 +586,43 @@ export const useEditorStore = create<EditorState & EditorActions>()(
 
         const editorWorld = state.world.instance as EditorWorld;
         
-        // Define plugins to install
-        const pluginsToInstall = [
-          {
-            name: 'three-render',
-            factory: () => new ThreeRenderPlugin({
-              createDefaultEntities: true,
-              enableShadows: true,
-              enableAntialiasing: true,
-              backgroundColor: '#2c2c2c'
-            })
-          }
-        ];
-
-        pluginStore.startLoading(pluginsToInstall.map(p => p.name));
-
-        // Install plugins sequentially
-        for (const pluginConfig of pluginsToInstall) {
-          try {
-            const startTime = performance.now();
-            
-            pluginStore.setPluginState(pluginConfig.name, PluginLoadingState.Loading);
-            
-            const plugin = pluginConfig.factory();
-            pluginStore.registerPlugin(plugin);
-            
-            // Install plugin
-            await editorWorld.plugins.install(plugin);
-            
-            const loadTime = performance.now() - startTime;
-            pluginStore.setPluginLoadTime(pluginConfig.name, loadTime);
-            pluginStore.setPluginState(pluginConfig.name, PluginLoadingState.Loaded);
-            
-            console.log(`Plugin '${pluginConfig.name}' loaded successfully in ${loadTime.toFixed(2)}ms`);
-          } catch (error) {
-            console.error(`Failed to load plugin '${pluginConfig.name}':`, error);
-            pluginStore.setPluginState(
-              pluginConfig.name, 
-              PluginLoadingState.Failed, 
-              error instanceof Error ? error.message : 'Unknown error'
-            );
-          }
+        try {
+          console.log('Loading plugins...');
+          
+          // Create Three.js render plugin
+          const threeRenderPlugin = new ThreeRenderPlugin({
+            createDefaultEntities: true,
+            enableShadows: true,
+            enableAntialiasing: true,
+            backgroundColor: '#2c2c2c'
+          });
+          
+          pluginStore.startLoading(['three-render']);
+          pluginStore.setPluginState('three-render', PluginLoadingState.Loading);
+          
+          const startTime = performance.now();
+          
+          await editorWorld.plugins.install(threeRenderPlugin);
+          
+          const loadTime = performance.now() - startTime;
+          
+          pluginStore.setPluginLoadTime('three-render', loadTime);
+          pluginStore.setPluginState('three-render', PluginLoadingState.Loaded);
+          pluginStore.registerPlugin(threeRenderPlugin);
+          
+          console.log(`Plugin 'three-render' loaded successfully in ${loadTime.toFixed(2)}ms`);
+          console.log('Plugin loading complete. 1/1 plugins loaded successfully');
+          
+          console.log('Components loaded via decorator preloading system');
+          
+          pluginStore.finishLoading();
+          
+        } catch (error) {
+          console.error('Failed to initialize plugins:', error);
+          pluginStore.setPluginState('three-render', PluginLoadingState.Failed, error instanceof Error ? error.message : 'Unknown error');
+          pluginStore.finishLoading();
+          throw error;
         }
-
-        pluginStore.finishLoading();
       },
 
       updateWorldStats: () => set((state) => {

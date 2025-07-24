@@ -31,3 +31,9 @@
 [submodule "packages/nova-ecs-ui"]
 	path = packages/nova-ecs-ui
 	url = https://github.com/esengine/nova-ecs-ui.git
+[submodule "packages/nova-ecs-editor"]
+	path = packages/nova-ecs-editor
+	url = https://github.com/esengine/nova-ecs-editor.git
+[submodule "packages/nova-ecs-core"]
+	path = packages/nova-ecs-core
+	url = https://github.com/esengine/nova-ecs-core.git

@@ -16,12 +16,11 @@ import { useEditorStore } from '../../../stores/editorStore';
 import { 
   ThreeRenderSystem,
   ThreeRenderPlugin,
-  TransformComponent as NovaTransformComponent,
   ThreeMeshComponent, 
   ThreeMaterialComponent, 
   ThreeGeometryComponent 
 } from '@esengine/nova-ecs-render-three';
-import { TransformComponent, MeshRendererComponent } from '../../../ecs';
+import { TransformComponent as NovaTransformComponent, MeshRendererComponent } from '../../../ecs';
 import type { EntityId } from '@esengine/nova-ecs';
 
 /**
@@ -326,7 +325,7 @@ export const NovaThreeRenderer: React.FC<NovaThreeRendererProps> = ({
   useEffect(() => {
     if (!canvasRef.current || !world || renderSystemRef.current) return;
 
-    // Delay initialization to ensure canvas is ready
+    // Delay initialization to ensure canvas is ready and plugins are loaded
     const initializeRenderer = async () => {
       try {
         // Get Three.js bridge from plugin
@@ -338,14 +337,15 @@ export const NovaThreeRenderer: React.FC<NovaThreeRendererProps> = ({
         // Get the render system directly from plugin
         const renderSystem = threePlugin.getRenderSystem();
         if (!renderSystem) {
-          throw new Error('ThreeRenderSystem not found in plugin');
+          throw new Error('ThreeRenderSystem not found in plugin. Plugin installation may have failed.');
         }
         
         // Store render system reference
         renderSystemRef.current = renderSystem;
         
         // Update plugin config with canvas
-        threePlugin.updateConfig({ canvas: canvasRef.current! });
+        const canvas = canvasRef.current!;
+        threePlugin.updateConfig({ canvas });
       
         // Create large grid for infinite effect
         const gridSize = 10000; // Large but reasonable size
@@ -366,19 +366,50 @@ export const NovaThreeRenderer: React.FC<NovaThreeRendererProps> = ({
       // Convert existing entities to Three.js components
       convertExistingEntities();
       
-        setIsInitialized(true);
+      setIsInitialized(true);
       } catch (error) {
         console.error('Failed to initialize Nova Three.js renderer:', error);
-        console.error('Error details:', {
-          hasCanvas: !!canvasRef.current,
-          hasWorld: !!world,
-          error: error
-        });
       }
     };
 
+    // Wait for plugins to be fully loaded before initializing
+    // 等待插件完全加载后再初始化
+    let retryCount = 0;
+    const maxRetries = 20; // Max 10 seconds (20 * 500ms)
+    
+    const checkPluginsLoaded = () => {
+      console.log('Checking for three-render plugin...');
+      
+      // Use NovaECS native plugin system
+      // 使用NovaECS原生插件系统
+      const threePlugin = world.plugins.get('three-render');
+      console.log('Found three-render plugin:', !!threePlugin);
+      
+      if (threePlugin && typeof threePlugin.getRenderSystem === 'function') {
+        const renderSystem = threePlugin.getRenderSystem();
+        if (renderSystem) {
+          console.log('Render system is ready, initializing renderer...');
+          initializeRenderer();
+          return;
+        } else {
+          console.warn('getRenderSystem() returned null/undefined');
+        }
+      }
+      
+      // Retry after a short delay if plugins aren't loaded yet
+      // 如果插件尚未加载，稍后重试
+      retryCount++;
+      if (retryCount < maxRetries) {
+        console.warn('Three-render plugin not ready, retrying...');
+        setTimeout(checkPluginsLoaded, 500);
+      } else {
+        console.error('Failed to find three-render plugin after maximum retries.');
+        setIsInitialized(true); // Stop showing loading message
+      }
+    };
+    
     // Use setTimeout to ensure canvas is fully rendered
-    const timeoutId = setTimeout(initializeRenderer, 100);
+    const timeoutId = setTimeout(checkPluginsLoaded, 100);
     
     // Cleanup function
     return () => {
@@ -403,19 +434,10 @@ export const NovaThreeRenderer: React.FC<NovaThreeRendererProps> = ({
     selectableObjects.current = [];
 
     world.entities.forEach((entity: any) => {
-      const transform = entity.getComponent(TransformComponent);
+      const transform = entity.getComponent(NovaTransformComponent);
       const meshRenderer = entity.getComponent(MeshRendererComponent);
 
       if (transform && meshRenderer) {
-        // Add Nova Transform component
-        if (!entity.hasComponent(NovaTransformComponent)) {
-          entity.addComponent(new NovaTransformComponent(
-            { x: transform.position.x, y: transform.position.y, z: transform.position.z },
-            { x: transform.rotation.x, y: transform.rotation.y, z: transform.rotation.z },
-            { x: transform.scale.x, y: transform.scale.y, z: transform.scale.z }
-          ));
-        }
-
         // Add Three.js mesh component
         if (!entity.hasComponent(ThreeMeshComponent)) {
           entity.addComponent(new ThreeMeshComponent());

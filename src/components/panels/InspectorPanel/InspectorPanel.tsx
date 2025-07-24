@@ -24,13 +24,15 @@ import {
   EyeInvisibleOutlined,
 } from '@ant-design/icons';
 import { useEditorStore } from '../../../stores/editorStore';
-import { 
-  EditorMetadataComponent, 
-  TransformComponent, 
-  MeshRendererComponent, 
+import {
+  EditorMetadataComponent,
+  TransformComponent,
+  MeshRendererComponent,
   BoxColliderComponent,
   SphereColliderComponent,
-  RigidBodyComponent
+  RigidBodyComponent,
+  LightComponent,
+  CameraComponent
 } from '../../../ecs';
 import type { EntityId } from '@esengine/nova-ecs';
 
@@ -181,6 +183,10 @@ const ComponentEditor: React.FC<{
       case 'Transform': return '🔧';
       case 'MeshRenderer': return '🎨';
       case 'BoxCollider': return '📦';
+      case 'SphereCollider': return '🔵';
+      case 'RigidBody': return '🏃';
+      case 'Light': return '💡';
+      case 'Camera': return '📷';
       case 'AIController': return '🤖';
       default: return '⚙️';
     }
@@ -290,25 +296,29 @@ const EntityHeader: React.FC<{
   </Card>
 );
 
-/**
- * Add component selector
- * 添加组件选择器
- */
 const AddComponentSelector: React.FC<{
   onAddComponent: (componentType: string) => void;
 }> = ({ onAddComponent }) => {
   const [selectedType, setSelectedType] = useState<string>('');
-  
-  const availableComponents = [
-    'MeshRenderer',
-    'BoxCollider',
-    'SphereCollider',
-    'RigidBody',
-    'AIController',
-    'AudioSource',
-    'Light',
-    'Camera'
-  ];
+  const [availableComponents, setAvailableComponents] = useState<Array<{
+    name: string;
+    displayName: string;
+    category: string;
+  }>>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    setIsLoading(true);
+    import('@esengine/nova-ecs-editor').then(({ getAvailableComponentTypes }) => {
+      const components = getAvailableComponentTypes().map(comp => ({
+        name: comp.componentType.name,
+        displayName: comp.registration.metadata.displayName,
+        category: comp.registration.metadata.category || 'Other'
+      }));
+      setAvailableComponents(components);
+      setIsLoading(false);
+    }).catch(console.error);
+  }, []);
 
   return (
     <Card
@@ -322,14 +332,21 @@ const AddComponentSelector: React.FC<{
     >
       <Space.Compact style={{ width: '100%' }}>
         <Select
-          placeholder="Select component type"
+          placeholder={isLoading ? "Loading components..." : "Select component type"}
           value={selectedType}
           onChange={setSelectedType}
           style={{ flex: 1 }}
           size="small"
+          loading={isLoading}
+          disabled={isLoading}
         >
-          {availableComponents.map(type => (
-            <Option key={type} value={type}>{type}</Option>
+          {availableComponents.map(comp => (
+            <Option key={comp.name} value={comp.name}>
+              <Space>
+                <span>{comp.displayName}</span>
+                <Tag color="blue">{comp.category}</Tag>
+              </Space>
+            </Option>
           ))}
         </Select>
         <Button
@@ -453,6 +470,30 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
           angularDrag: selectedEntity.getComponent(RigidBodyComponent)!.angularDrag,
           useGravity: selectedEntity.getComponent(RigidBodyComponent)!.useGravity
         }
+      }] : []),
+      ...(selectedEntity.getComponent(LightComponent) ? [{
+        id: 'light',
+        type: 'Light',
+        name: 'Light',
+        enabled: true,
+        properties: {
+          type: selectedEntity.getComponent(LightComponent)!.type,
+          color: selectedEntity.getComponent(LightComponent)!.color,
+          intensity: selectedEntity.getComponent(LightComponent)!.intensity,
+          shadows: selectedEntity.getComponent(LightComponent)!.shadows
+        }
+      }] : []),
+      ...(selectedEntity.getComponent(CameraComponent) ? [{
+        id: 'camera',
+        type: 'Camera',
+        name: 'Camera',
+        enabled: true,
+        properties: {
+          fov: selectedEntity.getComponent(CameraComponent)!.fov,
+          type: selectedEntity.getComponent(CameraComponent)!.type,
+          near: selectedEntity.getComponent(CameraComponent)!.near,
+          far: selectedEntity.getComponent(CameraComponent)!.far
+        }
       }] : [])
     ]
   } : null;
@@ -482,6 +523,10 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
       const componentTypeMap: Record<string, string> = {
         'renderer': 'MeshRenderer',
         'collider': 'BoxCollider',
+        'spherecollider': 'SphereCollider',
+        'rigidbody': 'RigidBody',
+        'light': 'Light',
+        'camera': 'Camera',
         'transform': 'Transform' // Transform cannot be removed
       };
       
@@ -498,7 +543,11 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
       const componentTypeMap: Record<string, string> = {
         'transform': 'Transform',
         'renderer': 'MeshRenderer',
-        'collider': 'BoxCollider'
+        'collider': 'BoxCollider',
+        'spherecollider': 'SphereCollider',
+        'rigidbody': 'RigidBody',
+        'light': 'Light',
+        'camera': 'Camera'
       };
       
       const componentType = componentTypeMap[componentId];

@@ -3,7 +3,8 @@
  * 场景序列化系统，用于保存和加载场景
  */
 
-import { EditorWorld, EditorMetadataComponent, TransformComponent, MeshRendererComponent, BoxColliderComponent } from '../ecs';
+import { EditorWorld, MeshRendererComponent, BoxColliderComponent } from '../ecs';
+import { EditorMetadataComponent, TransformComponent } from '@esengine/nova-ecs-core';
 import type { EntityId } from '@esengine/nova-ecs';
 import { assetService } from './AssetService';
 import { consoleService } from './ConsoleService';
@@ -229,20 +230,17 @@ export class SceneSerializer {
     try {
       switch (type) {
         case 'EditorMetadataComponent':
-          return new EditorMetadataComponent(
-            data.name,
-            data.tags,
-            data.layer,
-            data.isStatic
-          );
+          const metadata = new EditorMetadataComponent(data.name);
+          if (data.tag !== undefined) metadata.tag = data.tag;
+          if (data.layer !== undefined) metadata.layer = data.layer;
+          return metadata;
           
         case 'TransformComponent':
-          return new TransformComponent(
-            data.position,
-            data.rotation,
-            data.scale,
-            data.parentId
-          );
+          const transform = new TransformComponent();
+          if (data.position !== undefined) transform.position = data.position;
+          if (data.rotation !== undefined) transform.rotation = data.rotation;
+          if (data.scale !== undefined) transform.scale = data.scale;
+          return transform;
           
         case 'MeshRendererComponent':
           return new MeshRendererComponent(

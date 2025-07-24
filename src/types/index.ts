@@ -332,3 +332,4 @@ export interface EntityHierarchyNode {
   children: EntityHierarchyNode[];
   parentId: number | null;
 }
+

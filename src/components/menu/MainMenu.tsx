@@ -17,6 +17,7 @@ import {
 import { useEditorStore } from '../../stores/editorStore';
 import { projectService } from '../../services/ProjectService';
 import { PluginManager } from '../plugin';
+import { tauriFileService } from '../../services/TauriFileService';
 
 export interface MainMenuProps {
   theme: any;
@@ -44,11 +45,34 @@ export const MainMenu: React.FC<MainMenuProps> = ({ theme }) => {
 
   const handleOpenProject = async () => {
     try {
-      const result = await projectService.openProject();
-      if (result) {
-        setProject(result.config);
-        setProjectPath(result.path);
-        message.success(`Project "${result.config.name}" opened successfully`);
+      // Check if running in Tauri environment for native dialogs
+      // 检查是否在Tauri环境中运行以使用原生对话框
+      const isTauri = typeof window !== 'undefined' && 'isTauri' in window && Boolean((window as any).isTauri);
+      
+      if (isTauri) {
+        // Use native file dialog in Tauri
+        // 在Tauri中使用原生文件对话框
+        const selectedPath = await tauriFileService.openFolderDialog({
+          title: 'Select Project Folder'
+        });
+        
+        if (selectedPath) {
+          const result = await projectService.openProjectFromPath(selectedPath);
+          if (result) {
+            setProject(result.config);
+            setProjectPath(result.path);
+            message.success(`Project "${result.config.name}" opened successfully`);
+          }
+        }
+      } else {
+        // Use web-based project opening
+        // 使用基于Web的项目打开
+        const result = await projectService.openProject();
+        if (result) {
+          setProject(result.config);
+          setProjectPath(result.path);
+          message.success(`Project "${result.config.name}" opened successfully`);
+        }
       }
     } catch (error) {
       message.error('Failed to open project');

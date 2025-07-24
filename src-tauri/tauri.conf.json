@@ -1,0 +1,52 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Nova Editor",
+  "version": "1.0.0",
+  "identifier": "com.esengine.nova-editor",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:3000",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "title": "Nova Editor",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 1200,
+        "minHeight": 700,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "decorations": true,
+        "maximizable": true,
+        "minimizable": true,
+        "closable": true,
+        "alwaysOnTop": false,
+        "skipTaskbar": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "publisher": "ESEngine",
+    "copyright": "Copyright © 2025 ESEngine. All rights reserved.",
+    "category": "DeveloperTool",
+    "shortDescription": "Next-generation visual editor for NovaECS game framework",
+    "longDescription": "Nova Editor is a powerful visual editor for the NovaECS game framework, providing advanced tools for game development with React, TypeScript, and Three.js integration.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

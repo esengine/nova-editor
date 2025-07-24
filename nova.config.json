@@ -1,0 +1,14 @@
+{
+  "name": "Nova Editor Development",
+  "version": "1.0.0",
+  "description": "Nova Editor development environment",
+  "plugins": [],
+  "settings": {
+    "defaultScene": "main.scene",
+    "assetPaths": ["assets/"],
+    "build": {
+      "target": "web",
+      "minify": false
+    }
+  }
+}
