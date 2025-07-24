@@ -3,7 +3,7 @@
  * 主应用菜单组件
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Dropdown, App } from 'antd';
 import {
   FileOutlined,
@@ -11,16 +11,20 @@ import {
   SaveOutlined,
   ExportOutlined,
   ImportOutlined,
-  LogoutOutlined
+  LogoutOutlined,
+  SettingOutlined
 } from '@ant-design/icons';
 import { useEditorStore } from '../../stores/editorStore';
 import { projectService } from '../../services/ProjectService';
+import { PluginManager } from '../plugin';
 
 export interface MainMenuProps {
   theme: any;
 }
 
 export const MainMenu: React.FC<MainMenuProps> = ({ theme }) => {
+  const [pluginManagerVisible, setPluginManagerVisible] = useState(false);
+  
   const { 
     saveWorkspace, 
     resetWorkspace,
@@ -189,6 +193,16 @@ export const MainMenu: React.FC<MainMenuProps> = ({ theme }) => {
     }
   ];
 
+  // Tools menu items
+  const toolsMenuItems = [
+    {
+      key: 'plugin-manager',
+      label: 'Plugin Manager',
+      icon: <SettingOutlined />,
+      onClick: () => setPluginManagerVisible(true)
+    }
+  ];
+
   // Help menu items
   const helpMenuItems = [
     {
@@ -294,6 +308,35 @@ export const MainMenu: React.FC<MainMenuProps> = ({ theme }) => {
       </Dropdown>
 
       <Dropdown 
+        menu={{ items: toolsMenuItems, style: { backgroundColor: theme.colors.surface } }}
+        trigger={['click']}
+      >
+        <span 
+          onClick={e => e.preventDefault()}
+          style={{ 
+            color: theme.colors.text, 
+            padding: '6px 12px',
+            textDecoration: 'none',
+            borderRadius: '4px',
+            transition: 'background-color 0.2s',
+            cursor: 'pointer',
+            display: 'inline-block',
+            fontSize: '14px',
+            lineHeight: '1.4',
+            userSelect: 'none'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = theme.colors.border;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+        >
+          Tools
+        </span>
+      </Dropdown>
+
+      <Dropdown 
         menu={{ items: helpMenuItems, style: { backgroundColor: theme.colors.surface } }}
         trigger={['click']}
       >
@@ -321,6 +364,12 @@ export const MainMenu: React.FC<MainMenuProps> = ({ theme }) => {
           Help
         </span>
       </Dropdown>
+
+      {/* Plugin Manager Modal */}
+      <PluginManager
+        visible={pluginManagerVisible}
+        onClose={() => setPluginManagerVisible(false)}
+      />
     </div>
   );
 };

@@ -35,6 +35,8 @@ export interface PluginInfo {
   error?: string | undefined;
   loadTime?: number | undefined;
   plugin?: ECSPlugin | undefined;
+  enabled: boolean;
+  author?: string | undefined;
 }
 
 /**
@@ -69,6 +71,9 @@ interface PluginActions {
   registerPlugin: (plugin: ECSPlugin) => void;
   setPluginState: (name: string, state: PluginLoadingState, error?: string | undefined) => void;
   setPluginLoadTime: (name: string, loadTime: number) => void;
+  enablePlugin: (name: string) => void;
+  disablePlugin: (name: string) => void;
+  togglePlugin: (name: string) => void;
   
   // Loading management | 加载管理
   startLoading: (pluginNames: string[]) => void;
@@ -82,6 +87,8 @@ interface PluginActions {
   getPluginInfo: (name: string) => PluginInfo | undefined;
   getAllPlugins: () => PluginInfo[];
   getLoadingProgress: () => { loaded: number; total: number; percentage: number };
+  getEnabledPlugins: () => PluginInfo[];
+  getDisabledPlugins: () => PluginInfo[];
 }
 
 /**
@@ -114,7 +121,9 @@ export const usePluginStore = create<PluginState & PluginActions>()(
           version: plugin.metadata.version,
           description: plugin.metadata.description,
           state: PluginLoadingState.Idle,
-          plugin
+          plugin,
+          enabled: true, // Default to enabled
+          author: plugin.metadata.author
         };
         
         state.plugins.set(plugin.metadata.name, pluginInfo);
@@ -191,6 +200,35 @@ export const usePluginStore = create<PluginState & PluginActions>()(
 
       getAllPlugins: () => {
         return Array.from(get().plugins.values());
+      },
+
+      enablePlugin: (name: string) => set((state) => {
+        const plugin = state.plugins.get(name);
+        if (plugin) {
+          plugin.enabled = true;
+        }
+      }),
+
+      disablePlugin: (name: string) => set((state) => {
+        const plugin = state.plugins.get(name);
+        if (plugin) {
+          plugin.enabled = false;
+        }
+      }),
+
+      togglePlugin: (name: string) => set((state) => {
+        const plugin = state.plugins.get(name);
+        if (plugin) {
+          plugin.enabled = !plugin.enabled;
+        }
+      }),
+
+      getEnabledPlugins: () => {
+        return Array.from(get().plugins.values()).filter(plugin => plugin.enabled);
+      },
+
+      getDisabledPlugins: () => {
+        return Array.from(get().plugins.values()).filter(plugin => !plugin.enabled);
       },
 
       getLoadingProgress: () => {
