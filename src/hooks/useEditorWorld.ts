@@ -10,7 +10,7 @@ import { useEditorStore } from '../stores/editorStore';
  * Hook to initialize and manage the EditorWorld instance
  * 初始化和管理EditorWorld实例的钩子
  */
-export function useEditorWorld() {
+export function useEditorWorld(shouldInitialize: boolean = true) {
   const initializeWorld = useEditorStore(state => state.initializeWorld);
   const updateWorldStats = useEditorStore(state => state.updateWorldStats);
   const world = useEditorStore(state => state.world.instance);
@@ -18,11 +18,11 @@ export function useEditorWorld() {
   const initialized = useRef(false);
 
   useEffect(() => {
-    if (!initialized.current && !world && !isLoading) {
+    if (shouldInitialize && !initialized.current && !world && !isLoading) {
       initialized.current = true;
       initializeWorld().catch(console.error);
     }
-  }, [initializeWorld, world, isLoading]);
+  }, [shouldInitialize, initializeWorld, world, isLoading]);
 
   useEffect(() => {
     if (!world) return;

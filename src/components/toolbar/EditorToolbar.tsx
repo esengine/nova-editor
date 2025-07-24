@@ -8,15 +8,12 @@ import { Button, Space, Tooltip, Divider } from 'antd';
 import {
   UndoOutlined,
   RedoOutlined,
-  SaveOutlined,
-  FolderOpenOutlined,
   PlayCircleOutlined,
   PauseCircleOutlined,
   FileAddOutlined,
   DeleteOutlined
 } from '@ant-design/icons';
 import { useEditorStore } from '../../stores/editorStore';
-import { FileSystemService } from '../../services/FileSystemService';
 
 export interface EditorToolbarProps {
   style?: React.CSSProperties;
@@ -37,8 +34,6 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   const selectedEntities = useEditorStore(state => state.selection.selectedEntities);
   const removeEntity = useEditorStore(state => state.removeEntity);
   const theme = useEditorStore(state => state.theme);
-  
-  const fileSystemService = FileSystemService.getInstance();
 
   const handleUndo = () => {
     undo();
@@ -67,33 +62,6 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
     });
   };
 
-  const handleNewProject = async () => {
-    try {
-      const projectName = prompt('Enter project name:') || 'New Project';
-      const project = await fileSystemService.createNewProject(projectName);
-      console.log('Created new project:', project);
-    } catch (error) {
-      console.error('Failed to create project:', error);
-    }
-  };
-
-  const handleOpenProject = async () => {
-    try {
-      const project = await fileSystemService.openProject();
-      console.log('Opened project:', project);
-    } catch (error) {
-      console.error('Failed to open project:', error);
-    }
-  };
-
-  const handleSaveProject = async () => {
-    try {
-      await fileSystemService.saveAllFiles();
-      console.log('Saved all files');
-    } catch (error) {
-      console.error('Failed to save project:', error);
-    }
-  };
 
   const getUndoTooltip = () => {
     const undoCommand = commandManager.getUndoCommand();
@@ -114,108 +82,100 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         height: '44px',
         backgroundColor: theme.colors.surface,
         borderBottom: `1px solid ${theme.colors.border}`,
-        gap: '8px',
         ...style
       }}
       className={className}
     >
-      {/* File Operations */}
-      <Space size="small">
-        <Tooltip title="New Project">
-          <Button
-            icon={<FileAddOutlined />}
-            size="small"
-            onClick={handleNewProject}
-          />
-        </Tooltip>
-        
-        <Tooltip title="Open Project">
-          <Button
-            icon={<FolderOpenOutlined />}
-            size="small"
-            onClick={handleOpenProject}
-          />
-        </Tooltip>
-        
-        <Tooltip title="Save Project">
-          <Button
-            icon={<SaveOutlined />}
-            size="small"
-            onClick={handleSaveProject}
-          />
-        </Tooltip>
-      </Space>
+      {/* Left Side: Undo/Redo and Entity Operations */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {/* Undo/Redo */}
+        <Space size="small">
+          <Tooltip title={getUndoTooltip()}>
+            <Button
+              icon={<UndoOutlined />}
+              size="small"
+              disabled={!canUndo}
+              onClick={handleUndo}
+            />
+          </Tooltip>
+          
+          <Tooltip title={getRedoTooltip()}>
+            <Button
+              icon={<RedoOutlined />}
+              size="small"
+              disabled={!canRedo}
+              onClick={handleRedo}
+            />
+          </Tooltip>
+        </Space>
 
-      <Divider type="vertical" />
+        <Divider type="vertical" />
 
-      {/* Undo/Redo */}
-      <Space size="small">
-        <Tooltip title={getUndoTooltip()}>
-          <Button
-            icon={<UndoOutlined />}
-            size="small"
-            disabled={!canUndo}
-            onClick={handleUndo}
-          />
-        </Tooltip>
-        
-        <Tooltip title={getRedoTooltip()}>
-          <Button
-            icon={<RedoOutlined />}
-            size="small"
-            disabled={!canRedo}
-            onClick={handleRedo}
-          />
-        </Tooltip>
-      </Space>
+        {/* Entity Operations */}
+        <Space size="small">
+          <Tooltip title="Create Entity">
+            <Button
+              icon={<FileAddOutlined />}
+              size="small"
+              onClick={handleCreateEntity}
+              disabled={isCreatingEntity}
+              loading={isCreatingEntity}
+            />
+          </Tooltip>
+          
+          <Tooltip title={`Delete Selected (${selectedEntities.length} selected)`}>
+            <Button
+              icon={<DeleteOutlined />}
+              size="small"
+              disabled={selectedEntities.length === 0}
+              onClick={handleDeleteSelected}
+              danger={selectedEntities.length > 0}
+            />
+          </Tooltip>
+        </Space>
+      </div>
 
-      <Divider type="vertical" />
-
-      {/* Entity Operations */}
-      <Space size="small">
-        <Tooltip title="Create Entity">
-          <Button
-            icon={<FileAddOutlined />}
-            size="small"
-            onClick={handleCreateEntity}
-            disabled={isCreatingEntity}
-            loading={isCreatingEntity}
-          />
-        </Tooltip>
-        
-        <Tooltip title={`Delete Selected (${selectedEntities.length} selected)`}>
-          <Button
-            icon={<DeleteOutlined />}
-            size="small"
-            disabled={selectedEntities.length === 0}
-            onClick={handleDeleteSelected}
-            danger={selectedEntities.length > 0}
-          />
-        </Tooltip>
-      </Space>
-
-      <Divider type="vertical" />
-
-      {/* Playback Controls */}
-      <Space size="small">
-        <Tooltip title="Play">
+      {/* Center: Playback Controls - Most Important */}
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        flex: 1,
+        gap: '4px'
+      }}>
+        <Tooltip title="Play Game">
           <Button
             icon={<PlayCircleOutlined />}
-            size="small"
+            size="large"
             type="primary"
+            style={{ 
+              minWidth: '60px',
+              height: '32px',
+              fontSize: '16px'
+            }}
           />
         </Tooltip>
         
-        <Tooltip title="Pause">
+        <Tooltip title="Pause Game">
           <Button
             icon={<PauseCircleOutlined />}
-            size="small"
+            size="large"
+            style={{ 
+              minWidth: '60px',
+              height: '32px',
+              fontSize: '16px'
+            }}
           />
         </Tooltip>
-      </Space>
+      </div>
 
-      {/* Command History Info */}
-      <div style={{ marginLeft: 'auto', fontSize: '12px', color: theme.colors.textSecondary }}>
+      {/* Right Side: Command History Info */}
+      <div style={{ 
+        fontSize: '12px', 
+        color: theme.colors.textSecondary,
+        minWidth: '140px',
+        textAlign: 'right'
+      }}>
         History: {commandManager.getHistoryInfo().totalCommands} commands
       </div>
     </div>

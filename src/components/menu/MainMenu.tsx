@@ -10,17 +10,61 @@ import {
   FolderOpenOutlined,
   SaveOutlined,
   ExportOutlined,
-  ImportOutlined
+  ImportOutlined,
+  LogoutOutlined
 } from '@ant-design/icons';
 import { useEditorStore } from '../../stores/editorStore';
+import { projectService } from '../../services/ProjectService';
 
 export interface MainMenuProps {
   theme: any;
 }
 
 export const MainMenu: React.FC<MainMenuProps> = ({ theme }) => {
-  const { saveWorkspace, resetWorkspace } = useEditorStore();
+  const { 
+    saveWorkspace, 
+    resetWorkspace,
+    project,
+    projectPath,
+    setProject,
+    setProjectPath
+  } = useEditorStore();
   const { message } = App.useApp();
+
+  // Handle project operations
+  const handleNewProject = () => {
+    // Close current project and return to start screen
+    setProject(null);
+    setProjectPath(null);
+  };
+
+  const handleOpenProject = async () => {
+    try {
+      const result = await projectService.openProject();
+      if (result) {
+        setProject(result.config);
+        setProjectPath(result.path);
+        message.success(`Project "${result.config.name}" opened successfully`);
+      }
+    } catch (error) {
+      message.error('Failed to open project');
+    }
+  };
+
+  const handleSaveProject = async () => {
+    if (!project || !projectPath) {
+      message.warning('No project loaded');
+      return;
+    }
+
+    try {
+      await projectService.saveProject(projectPath, project);
+      saveWorkspace();
+      message.success('Project saved successfully');
+    } catch (error) {
+      message.error('Failed to save project');
+    }
+  };
 
   // File menu items
   const fileMenuItems = [
@@ -28,36 +72,43 @@ export const MainMenu: React.FC<MainMenuProps> = ({ theme }) => {
       key: 'new',
       label: 'New Project',
       icon: <FileOutlined />,
-      onClick: () => message.info('New project functionality coming soon')
+      onClick: handleNewProject
     },
     {
       key: 'open',
       label: 'Open Project',
       icon: <FolderOpenOutlined />,
-      onClick: () => message.info('Open project functionality coming soon')
+      onClick: handleOpenProject
     },
     { type: 'divider' as const },
     {
       key: 'save',
       label: 'Save Project',
       icon: <SaveOutlined />,
-      onClick: () => {
-        saveWorkspace();
-        message.success('Project saved');
-      }
+      onClick: handleSaveProject,
+      disabled: !project || !projectPath
     },
     { type: 'divider' as const },
     {
       key: 'export',
       label: 'Export Project',
       icon: <ExportOutlined />,
-      onClick: () => message.info('Export functionality coming soon')
+      onClick: () => message.info('Export functionality coming soon'),
+      disabled: !project
     },
     {
       key: 'import',
       label: 'Import Project',
       icon: <ImportOutlined />,
       onClick: () => message.info('Import functionality coming soon')
+    },
+    { type: 'divider' as const },
+    {
+      key: 'close',
+      label: 'Close Project',
+      icon: <LogoutOutlined />,
+      onClick: handleNewProject,
+      disabled: !project
     }
   ];
 

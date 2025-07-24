@@ -14,8 +14,6 @@ import {
   Breadcrumb,
   Upload,
   App,
-  Tabs,
-  Tree,
   Typography,
   Space
 } from 'antd';
@@ -36,8 +34,6 @@ import {
 } from '@ant-design/icons';
 import { useEditorStore } from '../../../stores/editorStore';
 import { assetService } from '../../../services/AssetService';
-import { FileSystemService } from '../../../services/FileSystemService';
-import type { ProjectFile, ProjectFolder } from '../../../services/FileSystemService';
 import {
   AssetType
 } from '../../../types/AssetTypes';
@@ -49,7 +45,6 @@ import type {
 
 const { Search } = Input;
 const { Option } = Select;
-const { Text } = Typography;
 
 /**
  * Asset icon mapping
@@ -274,9 +269,6 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
   const [assets, setAssets] = useState<AssetMetadata[]>([]);
   const [currentFolder, setCurrentFolder] = useState<AssetFolder | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'assets' | 'project'>('project');
-  
-  const fileSystemService = FileSystemService.getInstance();
   
   // Load folders and assets
   const loadAssets = useCallback(async () => {
@@ -365,68 +357,6 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
     message.info(`Opening asset: ${asset.name}`);
   };
 
-  // Convert project structure to tree data
-  const convertProjectToTreeData = (folder: ProjectFolder): any => {
-    return {
-      title: folder.name,
-      key: folder.path,
-      icon: <FolderOutlined />,
-      children: folder.children.map(child => {
-        if ('children' in child) {
-          return convertProjectToTreeData(child as ProjectFolder);
-        } else {
-          const file = child as ProjectFile;
-          return {
-            title: file.name,
-            key: file.path,
-            icon: getFileIcon(file.language),
-            isLeaf: true,
-            file: file
-          };
-        }
-      })
-    };
-  };
-
-  // Get file icon based on language/extension
-  const getFileIcon = (language: string) => {
-    switch (language) {
-      case 'typescript':
-      case 'javascript':
-        return <CodeOutlined />;
-      case 'json':
-        return <FileTextOutlined />;
-      case 'glsl':
-        return <FileOutlined />;
-      default:
-        return <FileOutlined />;
-    }
-  };
-
-  // Handle project file selection
-  const handleProjectFileSelect = (_selectedKeys: React.Key[], info: any) => {
-    const selectedNode = info.selectedNodes[0];
-    if (selectedNode?.file) {
-      const file = selectedNode.file as ProjectFile;
-      console.log('Selected project file:', file);
-      // TODO: Open file in code editor
-    }
-  };
-
-  // Handle project file import
-  const handleProjectFileImport = async () => {
-    try {
-      const importedFiles = await fileSystemService.importFiles();
-      if (importedFiles.length > 0) {
-        message.success(`Successfully imported ${importedFiles.length} file(s)`);
-        // Force re-render by setting activeTab again
-        setActiveTab('project');
-      }
-    } catch (error) {
-      console.error('Failed to import files:', error);
-      message.error('Failed to import files');
-    }
-  };
 
   // Handle file upload
   const handleFileUpload = async (files: File[]) => {
@@ -593,79 +523,6 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
     </div>
   );
 
-  const renderProjectView = () => {
-    const currentProject = fileSystemService.getCurrentProject();
-    
-    if (!currentProject) {
-      return (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100%',
-          flexDirection: 'column',
-          padding: '20px'
-        }}>
-          <Empty
-            description={
-              <div>
-                <Text style={{ color: '#ccc' }}>No project opened</Text>
-                <br />
-                <Text style={{ color: '#999', fontSize: '12px' }}>
-                  Use the toolbar to create or open a project
-                </Text>
-              </div>
-            }
-          />
-        </div>
-      );
-    }
-
-    const treeData = [convertProjectToTreeData(currentProject.rootFolder)];
-
-    return (
-      <div style={{ padding: '12px', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        {/* Project header */}
-        <div style={{ 
-          marginBottom: '12px', 
-          padding: '12px', 
-          backgroundColor: '#1f1f1f', 
-          borderRadius: '6px',
-          border: '1px solid #303030'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <Text strong style={{ color: '#fff', fontSize: '14px' }}>{currentProject.name}</Text>
-            <Button 
-              size="small" 
-              icon={<ImportOutlined />}
-              onClick={handleProjectFileImport}
-              type="primary"
-              ghost
-            >
-              Import Files
-            </Button>
-          </div>
-          <Text style={{ color: '#999', fontSize: '11px', wordBreak: 'break-all' }}>
-            {currentProject.rootPath}
-          </Text>
-        </div>
-        
-        {/* File tree */}
-        <div style={{ flex: 1, overflow: 'auto', backgroundColor: '#1a1a1a', borderRadius: '4px', padding: '8px' }}>
-          <Tree
-            showIcon
-            treeData={treeData}
-            onSelect={handleProjectFileSelect}
-            style={{ 
-              backgroundColor: 'transparent',
-              color: '#fff'
-            }}
-            blockNode
-          />
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div
@@ -681,78 +538,64 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
       }}
       className={className}
     >
-      <Tabs
-        activeKey={activeTab}
-        onChange={(key) => setActiveTab(key as 'assets' | 'project')}
-        style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
-        tabBarStyle={{ 
-          margin: 0,
-          paddingLeft: '12px',
-          paddingRight: '12px',
-          backgroundColor: '#1a1a1a',
-          borderBottom: '1px solid #303030',
-          minHeight: '40px'
-        }}
-        size="small"
-        items={[
-          {
-            key: 'project',
-            label: 'Project Files',
-            style: { height: '100%' },
-            children: renderProjectView()
-          },
-          {
-            key: 'assets',
-            label: 'Assets',
-            style: { height: '100%', display: 'flex', flexDirection: 'column' },
-            children: (
-              <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                {renderToolbar()}
-                
-                {/* Breadcrumb */}
-                <div style={{ padding: '0 12px 6px 12px', borderBottom: '1px solid #303030', backgroundColor: '#1a1a1a' }}>
-                  <FolderBreadcrumb
-                    currentFolder={currentFolder}
-                    folders={folders}
-                    onNavigate={navigateToFolder}
-                  />
-                </div>
-                
-                {/* Content */}
-                <div style={{ flex: 1, position: 'relative' }}>
-                  {isLoading ? (
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      height: '100%'
-                    }}>
-                      <Spin size="large" />
-                    </div>
-                  ) : assets.length === 0 ? (
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      height: '100%',
-                      flexDirection: 'column'
-                    }}>
-                      <Empty
-                        description="No assets found"
-                        style={{ color: '#ccc' }}
-                      />
-                    </div>
-                  ) : assetBrowser.viewMode === 'grid' ? (
-                    renderGridView()
-                  ) : (
-                    renderListView()
-                  )}
-                </div>
-              </div>
-            )
-          }
-        ]}
-      />
+      {/* Assets Panel Header */}
+      <div style={{
+        padding: '8px 12px',
+        backgroundColor: '#1a1a1a',
+        borderBottom: '1px solid #303030',
+        minHeight: '40px',
+        display: 'flex',
+        alignItems: 'center'
+      }}>
+        <Typography.Text style={{ color: '#fff', fontWeight: '500' }}>
+          Assets
+        </Typography.Text>
+      </div>
+
+      {/* Assets Content */}
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', flex: 1 }}>
+        {renderToolbar()}
+        
+        {/* Breadcrumb */}
+        <div style={{ padding: '0 12px 6px 12px', borderBottom: '1px solid #303030', backgroundColor: '#1a1a1a' }}>
+          <FolderBreadcrumb
+            currentFolder={currentFolder}
+            folders={folders}
+            onNavigate={navigateToFolder}
+          />
+        </div>
+        
+        {/* Content */}
+        <div style={{ flex: 1, position: 'relative' }}>
+          {isLoading ? (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%'
+            }}>
+              <Spin size="large" />
+            </div>
+          ) : assets.length === 0 ? (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              flexDirection: 'column'
+            }}>
+              <Empty
+                description="No assets found"
+                style={{ color: '#ccc' }}
+              />
+            </div>
+          ) : assetBrowser.viewMode === 'grid' ? (
+            renderGridView()
+          ) : (
+            renderListView()
+          )}
+        </div>
+      </div>
     </div>
   );
 };
