@@ -34,14 +34,10 @@ const initializeApp = async () => {
   try {
     const pluginStore = usePluginStore.getState();
     
-    console.log('Preloading components...');
     await componentPreloader.preloadAllComponents();
-    console.log('Components preloaded successfully');
-    
     pluginStore.setInitialized(true);
-    console.log('Plugin system initialized');
     
-    console.log('Nova Editor application initialized successfully');
+    console.log('Nova Editor initialized successfully');
   } catch (error) {
     console.error('Failed to initialize Nova Editor application:', error);
     
@@ -79,5 +75,3 @@ initializeTauri()
     );
   });
 
-console.log('Nova Editor Starting...');
-console.log('Nova Editor - Next Generation Visual Editor for NovaECS');

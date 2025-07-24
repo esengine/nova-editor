@@ -15,8 +15,12 @@ import {
   Upload,
   App,
   Typography,
-  Space
+  Space,
+  List,
+  Tooltip
 } from 'antd';
+
+const { Text } = Typography;
 import {
   AppstoreOutlined,
   BarsOutlined,
@@ -63,6 +67,28 @@ const ASSET_ICONS = {
   [AssetType.Material]: <FileTextOutlined />,
   [AssetType.Font]: <FileTextOutlined />,
   [AssetType.Unknown]: <QuestionOutlined />
+};
+
+/**
+ * Get asset icon by type
+ * 根据类型获取资源图标
+ */
+const getAssetIcon = (type: AssetType) => {
+  return ASSET_ICONS[type] || ASSET_ICONS[AssetType.Unknown];
+};
+
+/**
+ * Format file size in human readable format
+ * 格式化文件大小为人类可读格式
+ */
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 B';
+  
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
 /**
@@ -256,6 +282,8 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
 }) => {
   const { message } = App.useApp();
   const assetBrowser = useEditorStore(state => state.assetBrowser);
+  const forceUpdateTrigger = useEditorStore(state => state.forceUpdateTrigger);
+  const theme = useEditorStore(state => state.theme);
   const {
     navigateToFolder,
     setAssetViewMode,
@@ -338,7 +366,7 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [assetBrowser]);
+  }, [assetBrowser.currentFolderId, assetBrowser.searchQuery, assetBrowser.typeFilter, assetBrowser.sortBy, assetBrowser.sortOrder, forceUpdateTrigger]);
 
   // Load assets when dependencies change
   useEffect(() => {
@@ -518,8 +546,66 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
 
   const renderListView = () => (
     <div style={{ padding: '8px' }}>
-      {/* TODO: Implement list view */}
-      <Empty description="List view coming soon" />
+      {assets.length === 0 ? (
+        <Empty description="No assets found" />
+      ) : (
+        <List
+          itemLayout="horizontal"
+          dataSource={assets}
+          renderItem={(asset) => (
+            <List.Item
+              key={asset.id}
+              onClick={(e) => handleAssetSelect(asset.id, e)}
+              onDoubleClick={() => handleAssetDoubleClick(asset)}
+              style={{
+                cursor: 'pointer',
+                backgroundColor: assetBrowser.selectedAssets.includes(asset.id) ? theme.colors.primary + '20' : 'transparent',
+                padding: '8px 12px',
+                borderRadius: '4px',
+                marginBottom: '2px'
+              }}
+              actions={[
+                <Tooltip title={`Type: ${asset.type}`} key="type">
+                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                    {asset.type}
+                  </Text>
+                </Tooltip>,
+                <Tooltip title={`Size: ${formatFileSize(asset.size)}`} key="size">
+                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                    {formatFileSize(asset.size)}
+                  </Text>
+                </Tooltip>
+              ]}
+            >
+              <List.Item.Meta
+                avatar={
+                  <div style={{ 
+                    width: '32px', 
+                    height: '32px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    backgroundColor: theme.colors.border,
+                    borderRadius: '4px'
+                  }}>
+                    {getAssetIcon(asset.type)}
+                  </div>
+                }
+                title={
+                  <Text strong style={{ color: theme.colors.text }}>
+                    {asset.name}
+                  </Text>
+                }
+                description={
+                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                    {asset.filename}
+                  </Text>
+                }
+              />
+            </List.Item>
+          )}
+        />
+      )}
     </div>
   );
 

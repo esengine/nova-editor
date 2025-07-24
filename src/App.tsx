@@ -9,6 +9,7 @@ import { PluginLoadingScreen } from './components/layout/PluginLoadingScreen';
 import { ProjectStartScreen } from './components/project';
 import { MainMenu } from './components/menu';
 import { EditorToolbar } from './components/toolbar';
+import { assetService } from './services/AssetService';
 import type { ProjectConfig } from './types';
 import './App.css';
 
@@ -38,9 +39,29 @@ function App(): React.ReactElement {
   const showLoadingScreen = isLoading || isPluginLoading || !isPluginInitialized;
 
   // Handle project selection from start screen
-  const handleProjectSelected = (selectedProjectPath: string, projectConfig: ProjectConfig) => {
+  const handleProjectSelected = async (selectedProjectPath: string, projectConfig: ProjectConfig) => {
+    console.log('handleProjectSelected called with:', {
+      selectedProjectPath,
+      projectConfigName: projectConfig.name,
+      projectConfig
+    });
+    
     setProject(projectConfig);
     setProjectPath(selectedProjectPath);
+    
+    // Scan and load project assets
+    try {
+      await assetService.scanProjectAssets(selectedProjectPath);
+      
+      // Force update the asset browser to show newly scanned assets  
+      useEditorStore.setState((state) => {
+        state.forceUpdateTrigger++;
+      });
+      
+      console.log('Project assets scanned successfully');
+    } catch (error) {
+      console.error('Failed to scan project assets:', error);
+    }
   };
 
   // System components initialization will be redesigned

@@ -445,18 +445,24 @@ export const useEditorStore = create<EditorState & EditorActions>()(
         if (!addToSelection) {
           state.selection.selectedAssets = [assetId];
           state.selection.primarySelection = assetId;
+          state.assetBrowser.selectedAssets = [assetId];
+          state.assetBrowser.primarySelection = assetId;
         } else if (!state.selection.selectedAssets.includes(assetId)) {
           state.selection.selectedAssets.push(assetId);
+          state.assetBrowser.selectedAssets.push(assetId);
           if (!state.selection.primarySelection) {
             state.selection.primarySelection = assetId;
+            state.assetBrowser.primarySelection = assetId;
           }
         }
       }),
 
       deselectAsset: (assetId) => set((state) => {
         state.selection.selectedAssets = state.selection.selectedAssets.filter((id: string) => id !== assetId);
+        state.assetBrowser.selectedAssets = state.assetBrowser.selectedAssets.filter((id: string) => id !== assetId);
         if (state.selection.primarySelection === assetId) {
           state.selection.primarySelection = state.selection.selectedAssets[0];
+          state.assetBrowser.primarySelection = state.assetBrowser.selectedAssets[0];
         }
       }),
 
@@ -587,8 +593,6 @@ export const useEditorStore = create<EditorState & EditorActions>()(
         const editorWorld = state.world.instance as EditorWorld;
         
         try {
-          console.log('Loading plugins...');
-          
           // Create Three.js render plugin
           const threeRenderPlugin = new ThreeRenderPlugin({
             createDefaultEntities: true,
@@ -609,11 +613,6 @@ export const useEditorStore = create<EditorState & EditorActions>()(
           pluginStore.setPluginLoadTime('three-render', loadTime);
           pluginStore.setPluginState('three-render', PluginLoadingState.Loaded);
           pluginStore.registerPlugin(threeRenderPlugin);
-          
-          console.log(`Plugin 'three-render' loaded successfully in ${loadTime.toFixed(2)}ms`);
-          console.log('Plugin loading complete. 1/1 plugins loaded successfully');
-          
-          console.log('Components loaded via decorator preloading system');
           
           pluginStore.finishLoading();
           
@@ -736,6 +735,8 @@ export const useEditorStore = create<EditorState & EditorActions>()(
         state.assetBrowser.currentFolderId = folderId;
         state.assetBrowser.selectedAssets = [];
         state.assetBrowser.primarySelection = null;
+        state.selection.selectedAssets = [];
+        state.selection.primarySelection = null;
       }),
 
       setAssetViewMode: (mode) => set((state) => {

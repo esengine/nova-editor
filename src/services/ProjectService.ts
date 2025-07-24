@@ -72,6 +72,11 @@ class ProjectService {
    * 创建新项目
    */
   async createProject(projectPath: string, config: ProjectConfig, template?: any): Promise<string> {
+    console.log('createProject called with:', {
+      projectPath,
+      configName: config.name
+    });
+    
     try {
       // Create initial entities based on template
       const defaultEntities = template?.defaultEntities || [
@@ -101,7 +106,7 @@ class ProjectService {
       const assetFolders = template?.recommendedAssets || ['sprites', 'textures', 'audio'];
 
       // Check if running in Tauri environment for native file operations
-      const isTauri = typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_METADATA__' in window);
+      const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
       
       console.log('Creating project:', { 
         projectPath, 
@@ -120,6 +125,8 @@ class ProjectService {
         await this.createProjectFilesBrowser(projectPath, config, mainScene, assetFolders);
       }
       
+      console.log('createProject: actualProjectPath before adding to recent:', actualProjectPath);
+      
       // Add to recent projects
       await this.addToRecentProjects({
         name: config.name,
@@ -129,6 +136,7 @@ class ProjectService {
         lastOpened: Date.now()
       });
 
+      console.log('createProject: returning actualProjectPath:', actualProjectPath);
       return actualProjectPath;
     } catch (error) {
       console.error('Failed to create project:', error);
@@ -147,9 +155,8 @@ class ProjectService {
     try {
       console.log('Creating Tauri project at:', projectPath);
       
-      // Create project subdirectory with sanitized name
-      const projectName = config.name.replace(/[^a-zA-Z0-9-_]/g, '_');
-      const fullProjectPath = await join(projectPath, projectName);
+      // Use the provided projectPath directly (it already includes the project folder name)
+      const fullProjectPath = projectPath;
       
       console.log('Full project path:', fullProjectPath);
       
@@ -283,10 +290,11 @@ Generated with Nova Editor v${config.version}
         // Use the previously selected directory handle
         const dirHandle = this.selectedDirectoryHandle;
         
-        // If projectPath includes the project name, create a subdirectory
-        let projectDirHandle = dirHandle;
-        const projectName = config.name.replace(/[^a-zA-Z0-9-_]/g, '_'); // Sanitize project name
+        // Extract project name from the full projectPath
+        const pathParts = projectPath.split('/');
+        const projectName = pathParts[pathParts.length - 1];
         
+        let projectDirHandle = dirHandle;
         try {
           // Create project subdirectory if it doesn't exist
           projectDirHandle = await dirHandle.getDirectoryHandle(projectName, { create: true });
@@ -484,7 +492,7 @@ Generated with Nova Editor v${config.version}
   async selectDirectory(): Promise<string | null> {
     try {
       // Check if running in Tauri environment first
-      const isTauri = typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_METADATA__' in window);
+      const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
       
       if (isTauri) {
         // Use Tauri native directory dialog
@@ -584,6 +592,58 @@ Generated with Nova Editor v${config.version}
    */
   async openProject(): Promise<ProjectOpenResult | null> {
     try {
+      // Check if running in Tauri environment first
+      const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+      
+      if (isTauri) {
+        // Use Tauri native file dialog
+        try {
+          const { open } = await import('@tauri-apps/plugin-dialog');
+          const filePath = await open({
+            title: 'Open Project File',
+            filters: [{
+              name: 'Nova Project Files',
+              extensions: ['nova', 'json']
+            }]
+          });
+          
+          if (filePath && typeof filePath === 'string') {
+            // For Tauri, we need to read the actual file and extract project info
+            const { readTextFile } = await import('@tauri-apps/plugin-fs');
+            const { dirname } = await import('@tauri-apps/api/path');
+            
+            try {
+              const fileContent = await readTextFile(filePath);
+              const projectConfig = JSON.parse(fileContent);
+              
+              // The project directory is the parent of the config file
+              const projectPath = await dirname(filePath);
+              
+              // Update recent projects
+              await this.addToRecentProjects({
+                name: projectConfig.name,
+                path: projectPath,
+                version: projectConfig.version,
+                description: projectConfig.description,
+                lastOpened: Date.now()
+              });
+              
+              return {
+                path: projectPath,
+                config: projectConfig
+              };
+            } catch (error) {
+              console.error('Failed to read project file:', error);
+              throw new Error(`Invalid project file: ${error}`);
+            }
+          }
+          return null;
+        } catch (error) {
+          console.error('Tauri file dialog error:', error);
+          throw error;
+        }
+      }
+      
       // Try to use File System Access API for file selection
       if ('showOpenFilePicker' in window) {
         try {
@@ -599,9 +659,34 @@ Generated with Nova Editor v${config.version}
           
           if (fileHandles.length > 0) {
             const fileHandle = fileHandles[0];
-            // In a real implementation, you'd read the file content
-            const projectPath = fileHandle.name;
-            return await this.openProjectByPath(projectPath);
+            
+            try {
+              // Read the actual file content
+              const file = await fileHandle.getFile();
+              const fileContent = await file.text();
+              const projectConfig = JSON.parse(fileContent);
+              
+              // For browser File System Access API, we can't easily get the directory path
+              // So we'll use the file name as a fallback identifier
+              const projectPath = fileHandle.name.replace(/\.(nova|json)$/, '');
+              
+              // Update recent projects
+              await this.addToRecentProjects({
+                name: projectConfig.name,
+                path: projectPath,
+                version: projectConfig.version,
+                description: projectConfig.description,
+                lastOpened: Date.now()
+              });
+              
+              return {
+                path: projectPath,
+                config: projectConfig
+              };
+            } catch (error) {
+              console.error('Failed to read project file:', error);
+              throw new Error(`Invalid project file: ${error}`);
+            }
           }
         } catch (error: any) {
           if (error.name === 'AbortError') {
@@ -674,7 +759,7 @@ Generated with Nova Editor v${config.version}
   async openProjectFromPath(folderPath: string): Promise<ProjectOpenResult | null> {
     try {
       // Check if running in Tauri environment
-      const isTauri = typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_METADATA__' in window);
+      const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
       
       if (isTauri) {
         // Use Tauri file system API to read project.json or nova.config.json
@@ -793,31 +878,80 @@ Generated with Nova Editor v${config.version}
 
   async openProjectByPath(projectPath: string): Promise<ProjectOpenResult | null> {
     try {
-      // In real implementation, this would read from file system
-      const projectDataStr = localStorage.getItem(`nova-project-${projectPath}`);
+      // Check if running in Tauri environment
+      const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
       
-      if (!projectDataStr) {
-        throw new Error('Project not found or invalid project path');
-      }
-
-      const projectData = JSON.parse(projectDataStr);
-      
-      // Update last opened time
-      await this.addToRecentProjects({
-        name: projectData.config.name,
-        path: projectPath,
-        version: projectData.config.version,
-        description: projectData.config.description,
-        lastOpened: Date.now()
+      console.log('openProjectByPath debug:', {
+        hasWindow: typeof window !== 'undefined',
+        hasTauriInternals: typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window,
+        isTauri,
+        projectPath
       });
+      
+      if (isTauri) {
+        console.log('openProjectByPath: Using Tauri file system, projectPath:', projectPath);
+        
+        // Use Tauri file system to read project config
+        const { readTextFile } = await import('@tauri-apps/plugin-fs');
+        const { join } = await import('@tauri-apps/api/path');
+        
+        try {
+          const configPath = await join(projectPath, 'nova.config.json');
+          console.log('openProjectByPath: Config path resolved to:', configPath);
+          
+          const configContent = await readTextFile(configPath);
+          console.log('openProjectByPath: Config file read successfully');
+          
+          const projectConfig = JSON.parse(configContent);
+          console.log('openProjectByPath: Project config parsed:', {
+            name: projectConfig.name,
+            version: projectConfig.version
+          });
+          
+          // Update last opened time
+          await this.addToRecentProjects({
+            name: projectConfig.name,
+            path: projectPath,
+            version: projectConfig.version,
+            description: projectConfig.description,
+            lastOpened: Date.now()
+          });
+          
+          console.log('openProjectByPath: Returning result with path:', projectPath);
+          return {
+            path: projectPath,
+            config: projectConfig
+          };
+        } catch (fileError) {
+          throw new Error(`Project config file not found or invalid: ${fileError instanceof Error ? fileError.message : String(fileError)}`);
+        }
+      } else {
+        // Browser environment - try localStorage fallback
+        const projectDataStr = localStorage.getItem(`nova-project-${projectPath}`);
+        
+        if (!projectDataStr) {
+          throw new Error('Project not found in browser storage. Please use "Open Project File" to select the project configuration file.');
+        }
 
-      return {
-        path: projectPath,
-        config: projectData.config
-      };
+        const projectData = JSON.parse(projectDataStr);
+        
+        // Update last opened time
+        await this.addToRecentProjects({
+          name: projectData.config.name,
+          path: projectPath,
+          version: projectData.config.version,
+          description: projectData.config.description,
+          lastOpened: Date.now()
+        });
+
+        return {
+          path: projectPath,
+          config: projectData.config
+        };
+      }
     } catch (error) {
       console.error('Failed to open project by path:', error);
-      throw new Error(`Failed to open project: ${error}`);
+      throw new Error(`Failed to open project: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

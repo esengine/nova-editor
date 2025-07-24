@@ -456,6 +456,210 @@ export class AssetService {
 
     return await buildHierarchy(rootId);
   }
+
+  /**
+   * Scan and import assets from project directory
+   * 扫描并导入项目目录中的资源
+   */
+  public async scanProjectAssets(projectPath: string): Promise<void> {
+    if (!this.db) await this.initialize();
+
+    try {
+      // Check if running in Tauri environment
+      const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+      
+      console.log('Asset scanning debug:', {
+        hasWindow: typeof window !== 'undefined',
+        hasTauriInternals: typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window,
+        isTauri,
+        projectPath
+      });
+      
+      if (isTauri) {
+        console.log('Starting Tauri asset scanning...');
+        await this.scanProjectAssetsTauri(projectPath);
+      } else {
+        // For browser environment, we can't easily scan file system
+        // This would require user to select the assets directory
+        console.warn('Asset scanning not supported in browser environment');
+      }
+    } catch (error) {
+      console.error('Failed to scan project assets:', error);
+    }
+  }
+
+  /**
+   * Scan project assets using Tauri file system
+   * 使用Tauri文件系统扫描项目资源
+   */
+  private async scanProjectAssetsTauri(projectPath: string): Promise<void> {
+    console.log('scanProjectAssetsTauri called with path:', projectPath);
+    try {
+      const { readDir } = await import('@tauri-apps/plugin-fs');
+      const { join } = await import('@tauri-apps/api/path');
+
+      // Clear existing assets (optional - you might want to merge instead)
+      console.log('Clearing existing assets...');
+      await this.clearAllAssets();
+      
+      // Scan multiple directories
+      const directoriesToScan = [
+        { name: 'assets', path: await join(projectPath, 'assets') },
+        { name: 'scenes', path: await join(projectPath, 'scenes') }
+      ];
+      
+      for (const { name, path } of directoriesToScan) {
+        console.log(`Checking if ${name} directory exists...`);
+        try {
+          const entries = await readDir(path);
+          console.log(`${name} directory contents:`, entries);
+          
+          // Recursively scan directory
+          console.log(`Starting recursive scan of ${name}...`);
+          await this.scanDirectoryRecursive(path, 'root');
+          console.log(`Recursive scan of ${name} completed`);
+        } catch (dirError) {
+          console.warn(`${name} directory not found or not accessible:`, path, dirError);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Failed to scan assets directory:', error);
+      // Assets directory might not exist or be accessible
+    }
+  }
+
+  /**
+   * Recursively scan directory for assets
+   * 递归扫描目录中的资源
+   */
+  private async scanDirectoryRecursive(dirPath: string, parentFolderId: string): Promise<void> {
+    try {
+      const { readDir, readFile } = await import('@tauri-apps/plugin-fs');
+      const { join } = await import('@tauri-apps/api/path');
+
+      const entries = await readDir(dirPath);
+
+      for (const entry of entries) {
+        const fullPath = await join(dirPath, entry.name);
+
+        if (entry.isDirectory) {
+          // Create folder in asset browser
+          const folderId = generateFolderId();
+          const folder: AssetFolder = {
+            id: folderId,
+            name: entry.name,
+            path: `${parentFolderId === 'root' ? '' : await this.getFolderPath(parentFolderId)}/${entry.name}`,
+            parentId: parentFolderId,
+            children: [],
+            assets: [],
+            createdAt: Date.now(),
+          };
+
+          await this.db!.put('folders', folder);
+          
+          // Update parent folder
+          const parentFolder = await this.getFolder(parentFolderId);
+          if (parentFolder) {
+            parentFolder.children.push(folderId);
+            await this.db!.put('folders', parentFolder);
+          }
+
+          // Recursively scan subdirectory
+          await this.scanDirectoryRecursive(fullPath, folderId);
+        } else {
+          // Import file as asset
+          try {
+            const fileData = await readFile(fullPath);
+            const file = new File([fileData], entry.name, {
+              type: this.getMimeTypeFromExtension(entry.name)
+            });
+
+            const assetType = getAssetTypeFromFile(file);
+            
+            // Only import supported asset types
+            if (assetType !== AssetType.Unknown) {
+              await this.importSingleAsset(file, {
+                targetFolderId: parentFolderId,
+                generateThumbnails: true,
+                thumbnailSize: 128,
+                overwrite: false
+              });
+            }
+          } catch (fileError) {
+            console.warn(`Failed to import asset ${entry.name}:`, fileError);
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Failed to scan directory ${dirPath}:`, error);
+    }
+  }
+
+  /**
+   * Get MIME type from file extension
+   * 从文件扩展名获取MIME类型
+   */
+  private getMimeTypeFromExtension(filename: string): string {
+    const ext = filename.toLowerCase().split('.').pop();
+    const mimeTypes: Record<string, string> = {
+      'png': 'image/png',
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'gif': 'image/gif',
+      'webp': 'image/webp',
+      'svg': 'image/svg+xml',
+      'mp3': 'audio/mpeg',
+      'wav': 'audio/wav',
+      'ogg': 'audio/ogg',
+      'mp4': 'video/mp4',
+      'webm': 'video/webm',
+      'json': 'application/json',
+      'txt': 'text/plain',
+      'js': 'text/javascript',
+      'ts': 'text/typescript',
+      'css': 'text/css',
+      'html': 'text/html',
+    };
+    return mimeTypes[ext || ''] || 'application/octet-stream';
+  }
+
+  /**
+   * Get folder path by ID
+   * 通过ID获取文件夹路径
+   */
+  private async getFolderPath(folderId: string): Promise<string> {
+    const folder = await this.getFolder(folderId);
+    return folder ? folder.path : '';
+  }
+
+  /**
+   * Clear all assets (for re-scanning)
+   * 清除所有资源（用于重新扫描）
+   */
+  private async clearAllAssets(): Promise<void> {
+    if (!this.db) return;
+
+    // Clear all assets and file data
+    await this.db.clear('assets');
+    await this.db.clear('fileData');
+    
+    // Reset folders to just root
+    await this.db.clear('folders');
+    
+    // Recreate root folder
+    const rootFolder: AssetFolder = {
+      id: 'root',
+      name: 'Assets',
+      path: '/',
+      parentId: null,
+      children: [],
+      assets: [],
+      createdAt: Date.now(),
+    };
+    
+    await this.db.put('folders', rootFolder);
+  }
 }
 
 // Export singleton instance
