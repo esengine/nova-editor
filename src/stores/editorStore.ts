@@ -108,6 +108,7 @@ interface EditorActions {
   toggleSnap: () => void;
   setSnapSize: (size: number) => void;
   setViewMode: (mode: ViewMode) => void;
+  toggleCameraInfo: () => void;
   
   // World actions | 世界操作
   initializeWorld: () => Promise<void>;
@@ -359,7 +360,8 @@ export const useEditorStore = create<EditorState & EditorActions>()(
         transformMode: 'translate' as TransformMode,
         snapEnabled: false,
         snapSize: 0.5,
-        viewMode: '3d' as ViewMode
+        viewMode: '3d' as ViewMode,
+        showCameraInfo: false
       },
       assetBrowser: {
         currentFolderId: 'root',
@@ -511,6 +513,10 @@ export const useEditorStore = create<EditorState & EditorActions>()(
 
       setViewMode: (mode) => set((state) => {
         state.viewport.viewMode = mode;
+      }),
+
+      toggleCameraInfo: () => set((state) => {
+        state.viewport.showCameraInfo = !state.viewport.showCameraInfo;
       }),
 
       setTheme: (theme) => set((state) => {
@@ -689,10 +695,8 @@ export const useEditorStore = create<EditorState & EditorActions>()(
         const integration = state.world.instance?._integration;
         if (integration) {
           integration.getStoreActions().setEntityName(entityId, name);
-          // Force update to refresh Inspector panel
-          set((state) => {
-            state.forceUpdateTrigger = state.forceUpdateTrigger + 1;
-          });
+          // Don't force update here to avoid disrupting user input
+          // The ECS integration will handle necessary updates automatically
         }
       },
 
@@ -734,10 +738,8 @@ export const useEditorStore = create<EditorState & EditorActions>()(
         const integration = state.world.instance?._integration;
         if (integration) {
           integration.getStoreActions().updateComponentProperty(entityId, componentType, property, value);
-          // Force update to refresh Inspector panel
-          set((state) => {
-            state.forceUpdateTrigger = state.forceUpdateTrigger + 1;
-          });
+          // Don't force update here to avoid disrupting user input
+          // The ECS integration will handle necessary updates automatically
         }
       },
 
@@ -848,9 +850,21 @@ export const useEditorStore = create<EditorState & EditorActions>()(
           // Load scene from asset
           await sceneSerializer.loadSceneFromAssets(assetId, world);
           
+          // Trigger grid recreation after scene loading since world.clear() removes it
+          // 触发网格重新创建，因为world.clear()会移除它
+          set((state) => {
+            state.forceUpdateTrigger++;
+          });
+          
+          // Reset camera to default position after loading scene
+          // 加载场景后重置相机到默认位置
+          set((state) => {
+            state.viewport.cameraPosition = { x: 5, y: 5, z: 5 };
+            state.viewport.cameraRotation = { x: 0, y: 0, z: 0 };
+          });
+          
           // Update editor state
           const hierarchy = world.getEntityHierarchy();
-          console.log('Updating editor state with hierarchy:', hierarchy);
           set((state) => {
             state.world.entityHierarchy = hierarchy;
             state.selection.selectedEntities = [];
@@ -858,7 +872,6 @@ export const useEditorStore = create<EditorState & EditorActions>()(
             state.forceUpdateTrigger++;
           });
           
-          console.log('Scene loaded successfully, entities in world:', world.entities.length);
         } catch (error) {
           console.error('Failed to load scene:', error);
           throw error;

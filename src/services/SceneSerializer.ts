@@ -132,36 +132,27 @@ export class SceneSerializer {
    * 反序列化场景数据
    */
   async deserializeScene(sceneData: SerializedScene, world: EditorWorld): Promise<void> {
-    console.log('Deserializing scene:', sceneData.metadata.name);
-    console.log('Entities to create:', sceneData.entities.length);
-    
     // Clear existing entities
     const existingEntities = [...world.entities];
-    console.log('Clearing existing entities:', existingEntities.length);
     for (const entity of existingEntities) {
       world.removeEntity(entity.id);
     }
     
     // Create entities from serialized data
     for (const entityData of sceneData.entities) {
-      console.log('Creating entity:', entityData);
       const entity = world.createEntity();
       entity.active = entityData.active;
       
       // Add components
       for (const componentData of entityData.components) {
-        console.log('Deserializing component:', componentData);
         const component = await this.deserializeComponent(componentData);
         if (component) {
-          console.log('Adding component to entity:', component);
           entity.addComponent(component);
         } else {
           console.warn('Failed to deserialize component:', componentData);
         }
       }
     }
-    
-    console.log('Final world entity count:', world.entities.length);
     consoleService.addLog('success', `Loaded scene: ${sceneData.metadata.name} (${sceneData.entities.length} entities)`);
   }
   
@@ -355,22 +346,18 @@ export class SceneSerializer {
    */
   async loadSceneFromAssets(assetId: string, world: EditorWorld): Promise<void> {
     try {
-      console.log('Loading scene from asset ID:', assetId);
-      const data = await assetService.getAssetData(assetId);
+        const data = await assetService.getAssetData(assetId);
       if (!data) {
         throw new Error('Asset not found');
       }
-      console.log('Asset data found, size:', data.size);
       const arrayBuffer = await data.arrayBuffer();
       const text = new TextDecoder().decode(arrayBuffer);
-      console.log('Scene file content:', text);
       const sceneData: SerializedScene = JSON.parse(text);
       
       if (!this.validateSceneData(sceneData)) {
         throw new Error('Invalid scene file format');
       }
       
-      console.log('Scene data valid, deserializing...', sceneData);
       await this.deserializeScene(sceneData, world);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';

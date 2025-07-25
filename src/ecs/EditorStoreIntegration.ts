@@ -229,8 +229,8 @@ export class EditorStoreIntegration {
                 newValue: value
               });
               
-              // Update hierarchy to trigger UI refresh
-              this._updateHierarchy();
+              // Don't update hierarchy for property changes to avoid input disruption
+              // Property changes don't affect entity hierarchy structure
             }
           }
         }
@@ -281,7 +281,12 @@ export class EditorStoreIntegration {
    * 通过类型字符串获取组件类
    */
   private _getComponentClassByType(componentType: string): any {
-    switch (componentType) {
+    // Normalize component type name (remove "Component" suffix if present)
+    const normalizedType = componentType.endsWith('Component') 
+      ? componentType.slice(0, -'Component'.length)
+      : componentType;
+    
+    switch (normalizedType) {
       case 'Transform':
         return TransformComponent;
       case 'MeshRenderer':
@@ -299,6 +304,7 @@ export class EditorStoreIntegration {
       case 'Camera':
         return CameraComponent;
       default:
+        console.warn('Unknown component type:', componentType, 'normalized to:', normalizedType);
         return null;
     }
   }

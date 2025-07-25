@@ -6,7 +6,7 @@
  * 该检查器使用nova-ecs-editor包在运行时和编辑器代码之间进行清晰分离。
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   Card, 
   Button, 
@@ -36,6 +36,7 @@ import {
   type ComponentRegistration,
   type PropertyMetadata
 } from '@esengine/nova-ecs-editor';
+import { PhysicsTransformComponent } from '@esengine/nova-ecs-physics-core';
 import type { EntityId, ComponentType } from '@esengine/nova-ecs';
 
 const { Option } = Select;
@@ -51,6 +52,29 @@ const PropertyEditor: React.FC<{
   onChange: (value: any) => void;
 }> = ({ property, value, metadata, onChange }) => {
   const displayName = metadata.displayName || property;
+  
+  // Use local state for input values to prevent conflicts with ECS updates
+  const [localValue, setLocalValue] = useState(value);
+  const [isEditing, setIsEditing] = useState(false);
+  
+  // Update local value when prop value changes (but not while editing)
+  useEffect(() => {
+    if (!isEditing) {
+      setLocalValue(value);
+    }
+  }, [value, isEditing]);
+  
+  // Handle committing changes
+  const commitChange = useCallback((newValue: any) => {
+    onChange(newValue);
+    setLocalValue(newValue);
+    setIsEditing(false);
+  }, [onChange]);
+  
+  // Handle starting edit
+  const startEdit = useCallback(() => {
+    setIsEditing(true);
+  }, []);
 
   // Vector3 properties - handle objects with x, y, z properties
   // Vector3属性 - 处理具有x、y、z属性的对象
@@ -64,8 +88,15 @@ const PropertyEditor: React.FC<{
           <InputNumber
             size="small"
             placeholder="X"
-            value={value.x}
-            onChange={(x) => onChange({ ...value, x: x || 0 })}
+            value={localValue.x}
+            onChange={(x) => {
+              const newValue = { ...localValue, x: x || 0 };
+              setLocalValue(newValue);
+              setIsEditing(true);
+            }}
+            onBlur={() => commitChange(localValue)}
+            onPressEnter={() => commitChange(localValue)}
+            onFocus={startEdit}
             step={0.1}
             precision={2}
             style={{ width: '33.33%' }}
@@ -74,8 +105,15 @@ const PropertyEditor: React.FC<{
           <InputNumber
             size="small"
             placeholder="Y"
-            value={value.y}
-            onChange={(y) => onChange({ ...value, y: y || 0 })}
+            value={localValue.y}
+            onChange={(y) => {
+              const newValue = { ...localValue, y: y || 0 };
+              setLocalValue(newValue);
+              setIsEditing(true);
+            }}
+            onBlur={() => commitChange(localValue)}
+            onPressEnter={() => commitChange(localValue)}
+            onFocus={startEdit}
             step={0.1}
             precision={2}
             style={{ width: '33.33%' }}
@@ -84,8 +122,15 @@ const PropertyEditor: React.FC<{
           <InputNumber
             size="small"
             placeholder="Z"
-            value={value.z}
-            onChange={(z) => onChange({ ...value, z: z || 0 })}
+            value={localValue.z}
+            onChange={(z) => {
+              const newValue = { ...localValue, z: z || 0 };
+              setLocalValue(newValue);
+              setIsEditing(true);
+            }}
+            onBlur={() => commitChange(localValue)}
+            onPressEnter={() => commitChange(localValue)}
+            onFocus={startEdit}
             step={0.1}
             precision={2}
             style={{ width: '33.33%' }}
@@ -217,8 +262,14 @@ const PropertyEditor: React.FC<{
         </div>
         <InputNumber
           size="small"
-          value={value}
-          onChange={onChange}
+          value={localValue}
+          onChange={(newValue) => {
+            setLocalValue(newValue);
+            setIsEditing(true);
+          }}
+          onBlur={() => commitChange(localValue)}
+          onPressEnter={() => commitChange(localValue)}
+          onFocus={startEdit}
           min={metadata.min}
           max={metadata.max}
           step={metadata.step || 0.1}
@@ -244,8 +295,14 @@ const PropertyEditor: React.FC<{
       </div>
       <Input
         size="small"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        value={localValue}
+        onChange={(e) => {
+          setLocalValue(e.target.value);
+          setIsEditing(true);
+        }}
+        onBlur={() => commitChange(localValue)}
+        onPressEnter={() => commitChange(localValue)}
+        onFocus={startEdit}
         disabled={metadata.readonly || false}
       />
       {metadata.description && (
@@ -372,20 +429,25 @@ export const EditorInspectorPanel: React.FC<EditorInspectorPanelProps> = ({
 }) => {
   const selectedEntities = useEditorStore(state => state.selection.selectedEntities);
   const primarySelection = useEditorStore(state => state.selection.primarySelection);
+  // Only subscribe to world instance, not the entire world state object to reduce re-renders
   const world = useEditorStore(state => state.world.instance);
   const setEntityName = useEditorStore(state => state.setEntityName);
   const setEntityActive = useEditorStore(state => state.setEntityActive);
   const addComponent = useEditorStore(state => state.addComponent);
   const removeComponent = useEditorStore(state => state.removeComponent);
   const updateComponentProperty = useEditorStore(state => state.updateComponentProperty);
-  const forceUpdateTrigger = useEditorStore(state => state.forceUpdateTrigger);
-
-  // Force re-render when components change
-  // 当组件变化时强制重新渲染
-  const [, forceUpdate] = useState({});
-  useEffect(() => {
-    forceUpdate({});
-  }, [forceUpdateTrigger]);
+  
+  // Force update counter to trigger re-renders when component properties change
+  const [forceUpdateCounter, setForceUpdateCounter] = useState(0);
+  
+  // Use stable references to avoid unnecessary re-renders
+  const storeActions = useMemo(() => ({
+    setEntityName,
+    setEntityActive,
+    addComponent,
+    removeComponent,
+    updateComponentProperty
+  }), [setEntityName, setEntityActive, addComponent, removeComponent, updateComponentProperty]);
 
   // Get the primary selected entity
   // 获取主选中实体
@@ -393,14 +455,15 @@ export const EditorInspectorPanel: React.FC<EditorInspectorPanelProps> = ({
     ? world.getEntity(primarySelection as EntityId)
     : null;
 
-  // Get entity components that have registered metadata
-  // 获取具有已注册元数据的实体组件
-  const entityComponents = selectedEntity ? 
-    selectedEntity.getComponents()
+  // Memoize entity components calculation to prevent unnecessary recalculations
+  // 记忆化实体组件计算以防止不必要的重新计算
+  const entityComponents = useMemo(() => {
+    if (!selectedEntity) return [];
+    
+    const registry = getEditorComponentRegistry();
+    const components = selectedEntity.getComponents()
       .map((component: any) => {
         const componentType = component.constructor as ComponentType;
-        const registry = getEditorComponentRegistry();
-        
         // Match by component name to handle multiple import paths
         const matchingRegistration = registry.getAll().find(reg => reg.componentType.name === componentType.name);
         
@@ -418,58 +481,103 @@ export const EditorInspectorPanel: React.FC<EditorInspectorPanelProps> = ({
         const bOrder = b!.registration.metadata.order ?? 999;
         if (aOrder !== bOrder) return aOrder - bOrder;
         return a!.componentType.name.localeCompare(b!.componentType.name);
-      }) as Array<{ componentType: ComponentType; componentInstance: any; registration: ComponentRegistration }>
-    : [];
+      }) as Array<{ componentType: ComponentType; componentInstance: any; registration: ComponentRegistration }>;
+    
+    return components;
+  }, [selectedEntity, forceUpdateCounter]);
+  
+  // Listen for property changes to trigger re-render
+  useEffect(() => {
+    if (!world) return;
+    
+    const unsubscribe = world.editorEvents.on('propertyChanged', () => {
+      setForceUpdateCounter(prev => prev + 1);
+    });
+    
+    return unsubscribe;
+  }, [world]);
 
-  // Get components without metadata (fallback display)
-  // 获取没有元数据的组件（后备显示）
-  const componentsWithoutMetadata = selectedEntity ?
-    selectedEntity.getComponents()
+  // Memoize components without metadata calculation
+  // 记忆化没有元数据的组件计算
+  const componentsWithoutMetadata = useMemo(() => {
+    if (!selectedEntity) return [];
+    
+    const registry = getEditorComponentRegistry();
+    return selectedEntity.getComponents()
       .filter((component: any) => {
         const componentType = component.constructor as ComponentType;
-        const registry = getEditorComponentRegistry();
         const matchingRegistration = registry.getAll().find(reg => reg.componentType.name === componentType.name);
         return !matchingRegistration;
       })
       .map((component: any) => ({
         componentType: component.constructor as ComponentType,
         componentInstance: component
-      }))
-    : [];
+      }));
+  }, [selectedEntity]);
 
-  const handleEntityNameChange = (name: string) => {
+  // Memoize event handlers to prevent unnecessary re-renders
+  // 记忆化事件处理程序以防止不必要的重新渲染
+  const handleEntityNameChange = useMemo(() => (name: string) => {
     if (selectedEntity && typeof primarySelection === 'number') {
-      setEntityName(primarySelection, name);
+      storeActions.setEntityName(primarySelection, name);
     }
-  };
+  }, [selectedEntity, primarySelection, storeActions]);
 
-  const handleEntityActiveToggle = () => {
+  const handleEntityActiveToggle = useMemo(() => () => {
     if (selectedEntity && typeof primarySelection === 'number') {
-      setEntityActive(primarySelection, !selectedEntity.active);
+      storeActions.setEntityActive(primarySelection, !selectedEntity.active);
     }
-  };
+  }, [selectedEntity, primarySelection, storeActions]);
 
-  const handleComponentToggle = (componentType: ComponentType) => {
-    console.log('Component toggle not yet implemented: 组件切换尚未实现:', componentType.name);
-  };
+  const handleComponentToggle = useMemo(() => (_componentType: ComponentType) => {
+    // Component toggle not yet implemented
+  }, []);
 
-  const handleComponentRemove = (componentType: ComponentType) => {
+  const handleComponentRemove = useMemo(() => (componentType: ComponentType) => {
     if (selectedEntity && typeof primarySelection === 'number' && canRemoveComponent(componentType)) {
-      removeComponent(primarySelection, componentType.name);
+      storeActions.removeComponent(primarySelection, componentType.name);
     }
-  };
+  }, [selectedEntity, primarySelection, storeActions]);
 
-  const handlePropertyChange = (componentType: ComponentType, property: string, value: any) => {
+  const handlePropertyChange = useMemo(() => (componentType: ComponentType, property: string, value: any) => {
     if (selectedEntity && typeof primarySelection === 'number') {
-      updateComponentProperty(primarySelection, componentType.name, property, value);
+      const component = selectedEntity.getComponent(componentType);
+      if (component && property in component) {
+        const oldValue = (component as any)[property];
+        (component as any)[property] = value;
+        
+        // For TransformComponent, also update PhysicsTransformComponent if it exists
+        if (componentType.name === 'TransformComponent') {
+          const physicsTransform = selectedEntity.getComponent(PhysicsTransformComponent);
+          if (physicsTransform && property in physicsTransform) {
+            if (property === 'position' && value && typeof value === 'object') {
+              (physicsTransform as any)[property] = {
+                x: value.x || 0,
+                y: value.y || 0
+              };
+            } else {
+              (physicsTransform as any)[property] = value;
+            }
+          }
+        }
+        
+        // Emit the event directly
+        world?.editorEvents.emit('propertyChanged', {
+          entityId: primarySelection,
+          componentType: componentType.name,
+          property,
+          oldValue,
+          newValue: value
+        });
+      }
     }
-  };
+  }, [selectedEntity, primarySelection, world]);
 
-  const handleAddComponent = (componentTypeName: string) => {
+  const handleAddComponent = useMemo(() => (componentTypeName: string) => {
     if (selectedEntity && typeof primarySelection === 'number') {
-      addComponent(primarySelection, componentTypeName);
+      storeActions.addComponent(primarySelection, componentTypeName);
     }
-  };
+  }, [selectedEntity, primarySelection, storeActions]);
 
   // Get entity name (for now, use a simple pattern)
   // 获取实体名称（目前使用简单模式）

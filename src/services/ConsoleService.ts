@@ -368,7 +368,7 @@ export class ConsoleService {
       if (match) {
         const [, timestamp, level, message] = match;
         importedLogs.push({
-          id: Date.now() + Math.random(),
+          id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           timestamp: new Date(timestamp).getTime(),
           level: level.toLowerCase() as LogLevel,
           message

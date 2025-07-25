@@ -356,6 +356,9 @@ export const NovaThreeRenderer: React.FC<NovaThreeRendererProps> = ({
         // Update plugin config with canvas
         const canvas = canvasRef.current!;
         threePlugin.updateConfig({ canvas });
+        
+        // Store renderer reference on canvas for camera position indicator
+        (canvas as any).__threeRenderer = renderSystem;
       
         // Create large grid for infinite effect
         const gridSize = 10000; // Large but reasonable size
@@ -388,17 +391,14 @@ export const NovaThreeRenderer: React.FC<NovaThreeRendererProps> = ({
     const maxRetries = 20; // Max 10 seconds (20 * 500ms)
     
     const checkPluginsLoaded = () => {
-      console.log('Checking for three-render plugin...');
       
       // Use NovaECS native plugin system
       // 使用NovaECS原生插件系统
       const threePlugin = world.plugins.get('three-render');
-      console.log('Found three-render plugin:', !!threePlugin);
       
       if (threePlugin && typeof threePlugin.getRenderSystem === 'function') {
         const renderSystem = threePlugin.getRenderSystem();
         if (renderSystem) {
-          console.log('Render system is ready, initializing renderer...');
           initializeRenderer();
           return;
         } else {
@@ -534,6 +534,9 @@ export const NovaThreeRenderer: React.FC<NovaThreeRendererProps> = ({
     // Initialize enhanced orbit controls
     orbitControlsRef.current = new OrbitControls(camera, canvasRef.current);
     
+    // Store orbit controls reference on canvas for camera position indicator
+    (canvasRef.current as any).__orbitControls = orbitControlsRef.current;
+    
     // Initialize selection system
     selectionSystemRef.current = new SelectionSystem(scene, camera);
     
@@ -558,8 +561,7 @@ export const NovaThreeRenderer: React.FC<NovaThreeRendererProps> = ({
     // Setup event listeners for enhanced interaction
     setupEventListeners();
     
-    console.log('Rendering systems initialized successfully');
-  };
+      };
 
   /**
    * Switch camera mode between 2D and 3D
@@ -781,12 +783,32 @@ export const NovaThreeRenderer: React.FC<NovaThreeRendererProps> = ({
     gizmoScene.add(axesGroup);
   };
 
-  // Control grid visibility
+  // Control grid visibility and ensure grid exists after scene clearing
   useEffect(() => {
+    if (!renderSystemRef.current) return;
+
+    // Check if grid helper exists in the scene
     if (gridHelperRef.current) {
+      const scene = renderSystemRef.current.scene;
+      const gridInScene = scene.children.includes(gridHelperRef.current);
+      
+      if (!gridInScene) {
+        // Re-add grid if it was removed from scene (e.g., after world.clear())
+        scene.add(gridHelperRef.current);
+      }
+      
+      // Update visibility
       gridHelperRef.current.visible = showGrid;
+    } else if (showGrid) {
+      // Create grid if it doesn't exist and should be visible
+      const gridSize = 10000;
+      const gridHelper = new THREE.GridHelper(gridSize, gridSize / 10, '#888888', '#444444');
+      gridHelper.material.opacity = 0.3;
+      gridHelper.material.transparent = true;
+      gridHelperRef.current = gridHelper;
+      renderSystemRef.current.scene.add(gridHelper);
     }
-  }, [showGrid]);
+  }, [showGrid, forceUpdateTrigger]);
 
   // Update gizmo camera to match main camera
   const updateGizmoCamera = () => {
@@ -969,6 +991,7 @@ export const NovaThreeRenderer: React.FC<NovaThreeRendererProps> = ({
     >
       <canvas
         ref={canvasRef}
+        data-three-canvas="true"
         style={{
           width: '100%',
           height: '100%',

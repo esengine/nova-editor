@@ -3,7 +3,7 @@
  * 场景视图面板 - 用于场景编辑的3D视口
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button, Space, Tooltip } from 'antd';
 import {
   BorderOutlined,
@@ -13,7 +13,9 @@ import {
   ReloadOutlined,
   ExpandOutlined,
   EyeOutlined,
-  GlobalOutlined
+  GlobalOutlined,
+  HomeOutlined,
+  InfoOutlined
 } from '@ant-design/icons';
 import { useEditorStore } from '../../../stores/editorStore';
 import { NovaThreeRenderer } from './NovaThreeRenderer';
@@ -28,11 +30,13 @@ const SceneViewToolbar: React.FC = () => {
   
   const showGrid = useEditorStore(state => state.viewport.showGrid);
   const showGizmos = useEditorStore(state => state.viewport.showGizmos);
+  const showCameraInfo = useEditorStore(state => state.viewport.showCameraInfo);
   const transformMode = useEditorStore(state => state.viewport.transformMode);
   const snapEnabled = useEditorStore(state => state.viewport.snapEnabled);
   const viewMode = useEditorStore(state => state.viewport.viewMode);
   const toggleGrid = useEditorStore(state => state.toggleGrid);
   const toggleGizmos = useEditorStore(state => state.toggleGizmos);
+  const toggleCameraInfo = useEditorStore(state => state.toggleCameraInfo);
   const setTransformMode = useEditorStore(state => state.setTransformMode);
   const toggleSnap = useEditorStore(state => state.toggleSnap);
   const setViewMode = useEditorStore(state => state.setViewMode);
@@ -140,8 +144,129 @@ const SceneViewToolbar: React.FC = () => {
               onClick={toggleSnap}
             />
           </Tooltip>
+          <Tooltip title="Toggle Camera Info">
+            <Button
+              type={showCameraInfo ? 'primary' : 'default'}
+              icon={<InfoOutlined />}
+              size="small"
+              onClick={toggleCameraInfo}
+            />
+          </Tooltip>
         </Space.Compact>
       </Space>
+    </div>
+  );
+};
+
+/**
+ * Camera Position Indicator Component
+ * 相机位置指示器组件
+ */
+const CameraPositionIndicator: React.FC = () => {
+  const [cameraPosition, setCameraPosition] = useState({ x: 0, y: 0, z: 0 });
+  const [cameraRotation, setCameraRotation] = useState({ x: 0, y: 0, z: 0 });
+  const viewMode = useEditorStore(state => state.viewport.viewMode);
+  const showCameraInfo = useEditorStore(state => state.viewport.showCameraInfo);
+
+  // Reset camera to default position
+  const resetCamera = () => {
+    const canvas = document.querySelector('[data-three-canvas]') as HTMLCanvasElement;
+    if (canvas && (canvas as any).__threeRenderer) {
+      const renderer = (canvas as any).__threeRenderer;
+      if (renderer.camera) {
+        // Reset camera position
+        renderer.camera.position.set(5, 5, 5);
+        renderer.camera.lookAt(0, 0, 0);
+        
+        // If orbit controls exist, reset them too
+        const orbitControls = (canvas as any).__orbitControls;
+        if (orbitControls) {
+          orbitControls.target.set(0, 0, 0);
+          orbitControls.update();
+        }
+      }
+    }
+  };
+
+  // Subscribe to camera updates from the renderer
+  useEffect(() => {
+    if (!showCameraInfo) return; // Skip updates if not visible
+
+    const updateCameraInfo = () => {
+      // This will be called by the renderer when camera moves
+      const canvas = document.querySelector('[data-three-canvas]') as HTMLCanvasElement;
+      if (canvas && (canvas as any).__threeRenderer) {
+        const renderer = (canvas as any).__threeRenderer;
+        if (renderer.camera) {
+          const pos = renderer.camera.position;
+          const rot = renderer.camera.rotation;
+          setCameraPosition({
+            x: Math.round(pos.x * 100) / 100,
+            y: Math.round(pos.y * 100) / 100,
+            z: Math.round(pos.z * 100) / 100
+          });
+          setCameraRotation({
+            x: Math.round(rot.x * 100) / 100,
+            y: Math.round(rot.y * 100) / 100,
+            z: Math.round(rot.z * 100) / 100
+          });
+        }
+      }
+    };
+
+    // Update every frame
+    const intervalId = setInterval(updateCameraInfo, 100);
+    return () => clearInterval(intervalId);
+  }, [showCameraInfo]);
+
+  // Don't render if camera info is disabled
+  if (!showCameraInfo) return null;
+
+  return (
+    <div style={{
+      position: 'absolute',
+      bottom: '8px',
+      left: '8px',
+      zIndex: 1000,
+      background: 'rgba(0, 0, 0, 0.7)',
+      color: 'white',
+      padding: '8px 12px',
+      borderRadius: '6px',
+      fontSize: '12px',
+      fontFamily: 'monospace',
+      backdropFilter: 'blur(4px)',
+      border: '1px solid rgba(255, 255, 255, 0.1)'
+    }}>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        marginBottom: '4px' 
+      }}>
+        <span style={{ fontWeight: 'bold' }}>
+          📷 Camera ({viewMode?.toUpperCase()})
+        </span>
+        <Button
+          type="text"
+          size="small"
+          icon={<HomeOutlined />}
+          onClick={resetCamera}
+          style={{ 
+            color: 'white', 
+            border: 'none',
+            padding: '0 4px',
+            minWidth: 'auto',
+            height: '16px'
+          }}
+          title="Reset Camera Position"
+        />
+      </div>
+      <div>
+        <strong>Position:</strong> ({cameraPosition.x}, {cameraPosition.y}, {cameraPosition.z})
+      </div>
+      <div>
+        <strong>Rotation:</strong> ({cameraRotation.x}, {cameraRotation.y}, {cameraRotation.z})
+      </div>
     </div>
   );
 };
@@ -234,6 +359,7 @@ export const SceneViewPanel: React.FC<SceneViewPanelProps> = ({
     >
       <SceneViewToolbar />
       <NovaThreeRenderer />
+      <CameraPositionIndicator />
     </div>
   );
 };

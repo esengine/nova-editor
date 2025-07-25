@@ -222,6 +222,8 @@ export interface ViewportState {
   snapSize: number;
   /** Current view mode (2D/3D) | 当前视图模式（2D/3D） */
   viewMode: ViewMode;
+  /** Whether camera info is visible | 是否显示相机信息 */
+  showCameraInfo: boolean;
 }
 
 /**

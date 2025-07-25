@@ -38,7 +38,7 @@ export const LOG_LEVEL_ICONS: Record<LogLevel, string> = {
  * 日志条目接口
  */
 export interface LogEntry {
-  id: number;
+  id: string;
   timestamp: number;
   level: LogLevel;
   message: string;

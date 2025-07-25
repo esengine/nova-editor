@@ -37,7 +37,6 @@ const initializeApp = async () => {
     await componentPreloader.preloadAllComponents();
     pluginStore.setInitialized(true);
     
-    console.log('Nova Editor initialized successfully');
   } catch (error) {
     console.error('Failed to initialize Nova Editor application:', error);
     

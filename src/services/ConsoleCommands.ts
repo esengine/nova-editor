@@ -408,7 +408,6 @@ export function registerBuiltInCommands() {
     consoleService.registerCommand(command);
   });
   
-  consoleService.addLog('info', `Registered ${allCommands.length} built-in commands`);
 }
 
 /**
