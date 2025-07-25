@@ -250,8 +250,6 @@ export const FILE_TYPE_MAPPING: Record<string, AssetType> = {
   // 3D Models
   'model/gltf+json': AssetType.Model,
   'model/gltf-binary': AssetType.Model,
-  'application/octet-stream': AssetType.Model, // .glb files
-  'text/plain': AssetType.Model, // .obj files (sometimes)
   
   // Audio
   'audio/mpeg': AssetType.Audio,
@@ -265,9 +263,6 @@ export const FILE_TYPE_MAPPING: Record<string, AssetType> = {
   'application/javascript': AssetType.Script,
   'text/typescript': AssetType.Script,
   'application/typescript': AssetType.Script,
-  
-  // Scene files
-  'application/json': AssetType.Scene, // Could also be other JSON files
 };
 
 /**
@@ -278,12 +273,7 @@ export function getAssetTypeFromFile(file: File): AssetType {
   const mimeType = file.type;
   const extension = file.name.toLowerCase().split('.').pop();
   
-  // First try MIME type
-  if (FILE_TYPE_MAPPING[mimeType]) {
-    return FILE_TYPE_MAPPING[mimeType];
-  }
-  
-  // Then try extension
+  // First try extension for specific file types
   switch (extension) {
     case 'gltf':
     case 'glb':
@@ -324,6 +314,10 @@ export function getAssetTypeFromFile(file: File): AssetType {
       return AssetType.Material;
       
     default:
+      // Then try MIME type for other files
+      if (FILE_TYPE_MAPPING[mimeType]) {
+        return FILE_TYPE_MAPPING[mimeType];
+      }
       return AssetType.Unknown;
   }
 }

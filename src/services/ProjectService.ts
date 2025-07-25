@@ -22,50 +22,6 @@ class ProjectService {
   private readonly RECENT_PROJECTS_KEY = 'nova-editor-recent-projects';
   private readonly MAX_RECENT_PROJECTS = 10;
 
-  /**
-   * Get default component properties based on template
-   * 根据模板获取默认组件属性
-   */
-  private getDefaultComponentProperties(componentName: string, template?: any) {
-    const defaults: Record<string, any> = {
-      Transform: { 
-        position: { x: 0, y: 0, z: 0 }, 
-        rotation: { x: 0, y: 0, z: 0 }, 
-        scale: { x: 1, y: 1, z: 1 } 
-      },
-      Camera: { 
-        fov: template?.cameraType === 'orthographic' ? 10 : 60,
-        type: template?.cameraType || 'perspective',
-        near: 0.1,
-        far: 1000
-      },
-      MeshRenderer: { 
-        material: 'DefaultMaterial',
-        castShadows: true,
-        receiveShadows: true,
-        meshType: template?.id === '2d-game' ? 'plane' : 'box'
-      },
-      BoxCollider: { 
-        size: { x: 1, y: 1, z: template?.id === '2d-game' ? 0.1 : 1 },
-        center: { x: 0, y: 0, z: 0 },
-        isTrigger: false
-      },
-      RigidBody: {
-        type: 'dynamic',
-        mass: 1,
-        drag: 0,
-        angularDrag: 0.05,
-        useGravity: template?.id !== 'empty'
-      },
-      Light: {
-        type: 'directional',
-        color: '#FFFFFF',
-        intensity: 1,
-        shadows: true
-      }
-    };
-    return defaults[componentName] || {};
-  }
 
   /**
    * Create a new project
@@ -73,51 +29,20 @@ class ProjectService {
    */
   async createProject(projectPath: string, config: ProjectConfig, template?: any): Promise<string> {
     try {
-      // Create initial entities based on template
-      const defaultEntities = template?.defaultEntities || [
-        { name: 'MainCamera', components: ['Transform', 'Camera'] }
-      ];
-      
-      // Create initial scene with template entities
-      const mainScene = {
-        entities: defaultEntities.map((entity: any, index: number) => ({
-          id: index + 1,
-          name: entity.name,
-          active: true,
-          components: entity.components.map((compName: string) => ({
-            type: compName,
-            properties: this.getDefaultComponentProperties(compName, template)
-          }))
-        })),
-        systems: template?.enabledSystems || ['Core'],
-        settings: {
-          cameraType: template?.cameraType || 'perspective',
-          ambientLight: config.settings.rendering.ambientLight,
-          backgroundColor: config.settings.rendering.backgroundColor
-        }
-      };
-
       // Determine the asset folders based on template
       const assetFolders = template?.recommendedAssets || ['sprites', 'textures', 'audio'];
 
       // Check if running in Tauri environment for native file operations
       const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
       
-      console.log('Creating project:', { 
-        projectPath, 
-        configName: config.name, 
-        isTauri, 
-        hasDirectoryHandle: !!this.selectedDirectoryHandle 
-      });
-      
       let actualProjectPath = projectPath;
       
       if (isTauri) {
         // Use Tauri native file system operations
-        actualProjectPath = await this.createProjectFilesTauri(projectPath, config, mainScene, assetFolders);
+        actualProjectPath = await this.createProjectFilesTauri(projectPath, config, assetFolders);
       } else {
         // Use browser File System Access API or IndexedDB fallback
-        await this.createProjectFilesBrowser(projectPath, config, mainScene, assetFolders);
+        await this.createProjectFilesBrowser(projectPath, config, assetFolders);
       }
       
       // Add to recent projects
@@ -140,17 +65,13 @@ class ProjectService {
    * Create project files using Tauri native file system
    * 使用Tauri原生文件系统创建项目文件
    */
-  private async createProjectFilesTauri(projectPath: string, config: ProjectConfig, mainScene: any, assetFolders: string[]): Promise<string> {
+  private async createProjectFilesTauri(projectPath: string, config: ProjectConfig, assetFolders: string[]): Promise<string> {
     const { mkdir, writeTextFile } = await import('@tauri-apps/plugin-fs');
     const { join } = await import('@tauri-apps/api/path');
 
     try {
-      console.log('Creating Tauri project at:', projectPath);
-      
       // Use the provided projectPath directly (it already includes the project folder name)
       const fullProjectPath = projectPath;
-      
-      console.log('Full project path:', fullProjectPath);
       
       // Create main project directory
       await mkdir(fullProjectPath, { recursive: true });
@@ -197,9 +118,13 @@ class ProjectService {
       };
       await writeTextFile(configPath, JSON.stringify(projectConfig, null, 2));
 
-      // Write main.scene file
+      // Write main.scene file using SceneSerializer template
       const scenePath = await join(fullProjectPath, 'scenes', 'main.scene');
-      await writeTextFile(scenePath, JSON.stringify(mainScene, null, 2));
+      const { sceneSerializer } = await import('../services/SceneSerializer');
+      
+      // Use SceneSerializer to create the main scene template
+      const mainSceneTemplate = sceneSerializer.createSceneTemplate('main');
+      await writeTextFile(scenePath, JSON.stringify(mainSceneTemplate, null, 2));
 
       // Create .gitignore
       const gitignorePath = await join(fullProjectPath, '.gitignore');
@@ -267,7 +192,7 @@ Generated with Nova Editor v${config.version}
    * Create project files using browser File System Access API or fallback
    * 使用浏览器文件系统访问API或后备方案创建项目文件
    */
-  private async createProjectFilesBrowser(projectPath: string, config: ProjectConfig, mainScene: any, assetFolders: string[]): Promise<void> {
+  private async createProjectFilesBrowser(projectPath: string, config: ProjectConfig, assetFolders: string[]): Promise<void> {
     try {
       console.log('createProjectFilesBrowser called:', { 
         projectPath, 
@@ -337,11 +262,15 @@ Generated with Nova Editor v${config.version}
         await configWritable.write(JSON.stringify(projectConfig, null, 2));
         await configWritable.close();
 
-        // Write main.scene file
+        // Write main.scene file using SceneSerializer template
         const scenesHandle = await projectDirHandle.getDirectoryHandle('scenes');
         const sceneFileHandle = await scenesHandle.getFileHandle('main.scene', { create: true });
         const sceneWritable = await sceneFileHandle.createWritable();
-        await sceneWritable.write(JSON.stringify(mainScene, null, 2));
+        
+        // Use SceneSerializer to create the main scene template
+        const { sceneSerializer } = await import('../services/SceneSerializer');
+        const mainSceneTemplate = sceneSerializer.createSceneTemplate('main');
+        await sceneWritable.write(JSON.stringify(mainSceneTemplate, null, 2));
         await sceneWritable.close();
 
         // Create other files
@@ -357,9 +286,12 @@ Generated with Nova Editor v${config.version}
         throw new Error('Please select a directory first by clicking the "Browse" button.');
       } else {
         // Fallback: Store in IndexedDB with structure information
+        const { sceneSerializer } = await import('../services/SceneSerializer');
+        const mainSceneTemplate = sceneSerializer.createSceneTemplate('main');
+        
         const projectData = {
           config,
-          mainScene,
+          mainScene: mainSceneTemplate,
           assetFolders,
           createdAt: Date.now(),
           structure: {
@@ -389,7 +321,7 @@ Generated with Nova Editor v${config.version}
                 plugins: [],
                 settings: config.settings
               },
-              'scenes/main.scene': mainScene
+              'scenes/main.scene': mainSceneTemplate
             }
           }
         };

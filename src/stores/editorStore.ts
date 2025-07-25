@@ -27,6 +27,7 @@ import { workspaceService } from '../services/WorkspaceService';
 import { CommandManager, CreateEntityCommand, DeleteEntityCommand } from '../core/commands';
 import { usePluginStore, PluginLoadingState } from './pluginStore';
 import { ThreeRenderPlugin } from '@esengine/nova-ecs-render-three';
+import { sceneSerializer } from '../services/SceneSerializer';
 import type { EntityId } from '@esengine/nova-ecs';
 
 /**
@@ -152,6 +153,9 @@ interface EditorActions {
   saveWorkspace: () => void;
   loadWorkspace: () => void;
   resetWorkspace: () => void;
+  
+  // Scene actions | 场景操作
+  loadSceneFromAsset: (assetId: string) => Promise<void>;
 }
 
 /**
@@ -595,7 +599,7 @@ export const useEditorStore = create<EditorState & EditorActions>()(
         try {
           // Create Three.js render plugin
           const threeRenderPlugin = new ThreeRenderPlugin({
-            createDefaultEntities: true,
+            createDefaultEntities: false,
             enableShadows: true,
             enableAntialiasing: true,
             backgroundColor: '#2c2c2c'
@@ -820,7 +824,39 @@ export const useEditorStore = create<EditorState & EditorActions>()(
         state.layout = defaultLayout;
         state.theme = defaultTheme;
         workspaceService.clearWorkspace();
-      })
+      }),
+
+      loadSceneFromAsset: async (assetId: string) => {
+        const state = get() as any;
+        const world = state.world.instance;
+        
+        if (!world) {
+          throw new Error('World not initialized');
+        }
+
+        try {
+          // Clear current scene
+          world.clear();
+          
+          // Load scene from asset
+          await sceneSerializer.loadSceneFromAssets(assetId, world);
+          
+          // Update editor state
+          const hierarchy = world.getEntityHierarchy();
+          console.log('Updating editor state with hierarchy:', hierarchy);
+          set((state) => {
+            state.world.entityHierarchy = hierarchy;
+            state.selection.selectedEntities = [];
+            state.selection.primarySelection = null;
+            state.forceUpdateTrigger++;
+          });
+          
+          console.log('Scene loaded successfully, entities in world:', world.entities.length);
+        } catch (error) {
+          console.error('Failed to load scene:', error);
+          throw error;
+        }
+      }
     })),
     {
       name: 'nova-editor-store'

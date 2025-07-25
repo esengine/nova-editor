@@ -486,7 +486,6 @@ export class AssetService {
    */
   private async scanProjectAssetsTauri(projectPath: string): Promise<void> {
     try {
-      const { readDir } = await import('@tauri-apps/plugin-fs');
       const { join } = await import('@tauri-apps/api/path');
 
       // Clear existing assets (optional - you might want to merge instead)
@@ -498,10 +497,8 @@ export class AssetService {
         { name: 'scenes', path: await join(projectPath, 'scenes') }
       ];
       
-      for (const { name, path } of directoriesToScan) {
+      for (const { path } of directoriesToScan) {
         try {
-          const entries = await readDir(path);
-          // Recursively scan directory
           await this.scanDirectoryRecursive(path, 'root');
         } catch (dirError) {
           // Silently skip directories that don't exist or aren't accessible
@@ -605,6 +602,9 @@ export class AssetService {
       'ts': 'text/typescript',
       'css': 'text/css',
       'html': 'text/html',
+      'scene': 'application/json',
+      'prefab': 'application/json',
+      'material': 'application/json',
     };
     return mimeTypes[ext || ''] || 'application/octet-stream';
   }

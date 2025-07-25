@@ -49,56 +49,32 @@ interface ProjectStartScreenProps {
 
 const PROJECT_TEMPLATES = [
   {
-    id: '2d-game',
-    name: '2D Game',
-    description: 'Platform games, puzzles, side-scrollers with 2D physics',
+    id: 'game',
+    name: 'Game Project', 
+    description: 'Standard game project with physics and rendering support',
     icon: '🎮',
     settings: {
       physics: { gravity: { x: 0, y: -9.8 }, timeStep: 1/60 },
-      rendering: { backgroundColor: '#87CEEB', ambientLight: '#FFFFFF' }
+      rendering: { backgroundColor: '#2c2c2c', ambientLight: '#404040' }
     },
     defaultEntities: [
-      { name: 'Player', components: ['Transform', 'MeshRenderer', 'BoxCollider', 'RigidBody'] },
-      { name: 'Ground', components: ['Transform', 'MeshRenderer', 'BoxCollider'] },
-      { name: 'Camera2D', components: ['Transform', 'Camera'] }
+      { name: 'Main Camera', components: ['Transform', 'Camera'] },
+      { name: 'Directional Light', components: ['Transform', 'Light'] }
     ],
-    enabledSystems: ['Physics2D', 'Rendering2D', 'Input', 'Audio'],
-    cameraType: 'orthographic',
-    recommendedAssets: ['sprites', 'textures', 'audio', 'animations']
-  },
-  {
-    id: '3d-game',
-    name: '3D Game',
-    description: 'First-person, third-person, or 3D adventure games',
-    icon: '🎯',
-    settings: {
-      physics: { gravity: { x: 0, y: -9.8 }, timeStep: 1/60 },
-      rendering: { backgroundColor: '#000000', ambientLight: '#404040' }
-    },
-    defaultEntities: [
-      { name: 'Player', components: ['Transform', 'MeshRenderer', 'BoxCollider', 'RigidBody'] },
-      { name: 'Ground', components: ['Transform', 'MeshRenderer', 'BoxCollider'] },
-      { name: 'MainCamera', components: ['Transform', 'Camera'] },
-      { name: 'DirectionalLight', components: ['Transform', 'Light'] }
-    ],
-    enabledSystems: ['Physics3D', 'Rendering3D', 'Lighting', 'Input', 'Audio'],
-    cameraType: 'perspective',
-    recommendedAssets: ['meshes', 'materials', 'textures', 'audio', 'animations']
+    enabledSystems: ['Physics', 'Rendering', 'Input', 'Audio'],
+    recommendedAssets: ['models', 'textures', 'materials', 'audio', 'scripts']
   },
   {
     id: 'empty',
     name: 'Empty Project',
-    description: 'Minimal setup for custom projects',
+    description: 'Start with a completely empty project',
     icon: '📄',
     settings: {
       physics: { gravity: { x: 0, y: 0 }, timeStep: 1/60 },
-      rendering: { backgroundColor: '#F0F0F0', ambientLight: '#FFFFFF' }
+      rendering: { backgroundColor: '#2c2c2c', ambientLight: '#404040' }
     },
-    defaultEntities: [
-      { name: 'MainCamera', components: ['Transform', 'Camera'] }
-    ],
-    enabledSystems: ['Core'],
-    cameraType: 'perspective',
+    defaultEntities: [],
+    enabledSystems: [],
     recommendedAssets: []
   }
 ];
@@ -113,7 +89,7 @@ export const ProjectStartScreen: React.FC<ProjectStartScreenProps> = ({
   const [selectedPath, setSelectedPath] = useState<string>('');
   const [form] = Form.useForm();
   const [previewPath, setPreviewPath] = useState<string>('');
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('game');
 
   useEffect(() => {
     loadRecentProjects();
@@ -585,10 +561,7 @@ export const ProjectStartScreen: React.FC<ProjectStartScreenProps> = ({
                       <strong>🎯 Default Entities:</strong> {template.defaultEntities?.map(e => e.name).join(', ')}
                     </div>
                     <div style={{ marginBottom: '4px' }}>
-                      <strong>⚡ Enabled Systems:</strong> {template.enabledSystems?.join(', ')}
-                    </div>
-                    <div style={{ marginBottom: '4px' }}>
-                      <strong>📷 Camera Type:</strong> {template.cameraType}
+                      <strong>⚡ Enabled Systems:</strong> {template.enabledSystems?.join(', ') || 'None'}
                     </div>
                     <div>
                       <strong>📁 Asset Folders:</strong> {template.recommendedAssets?.join(', ') || 'None'}

@@ -380,9 +380,19 @@ export const AssetBrowserPanel: React.FC<AssetBrowserPanelProps> = ({
   };
 
   // Handle asset double-click
-  const handleAssetDoubleClick = (asset: AssetMetadata) => {
-    // TODO: Implement asset opening/editing
-    message.info(`Opening asset: ${asset.name}`);
+  const handleAssetDoubleClick = async (asset: AssetMetadata) => {
+    if (asset.type === AssetType.Scene) {
+      try {
+        const loadSceneFromAsset = useEditorStore.getState().loadSceneFromAsset;
+        await loadSceneFromAsset(asset.id);
+        message.success(`Scene loaded: ${asset.name}`);
+      } catch (error) {
+        console.error('Failed to load scene:', error);
+        message.error(`Failed to load scene: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    } else {
+      message.info(`Opening asset: ${asset.name}`);
+    }
   };
 
 
