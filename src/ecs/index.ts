@@ -19,10 +19,3 @@ export type {
 } from './EditorEvents';
 
 export { EditorStoreIntegration } from './EditorStoreIntegration';
-export {
-  SphereColliderComponent,
-  RigidBodyComponent,
-  AudioSourceComponent,
-  LightComponent,
-  CameraComponent
-} from './EditorStoreIntegration';

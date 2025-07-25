@@ -252,33 +252,16 @@ export class EditorStoreIntegration {
   }
 
   /**
-   * Create component instance by type string
-   * 通过类型字符串创建组件实例
+   * Create component instance by type string using ComponentRegistry
+   * 使用ComponentRegistry通过类型字符串创建组件实例
    */
   private _createComponentByType(componentType: string): Component | null {
-    switch (componentType) {
-      case 'MeshRenderer':
-        return new MeshRendererComponent();
-      case 'BoxCollider':
-        return new BoxColliderComponent();
-      case 'SphereCollider':
-        return new SphereColliderComponent();
-      case 'RigidBody':
-        return new RigidBodyComponent();
-      case 'AudioSource':
-        return new AudioSourceComponent();
-      case 'Light':
-        return new LightComponent();
-      case 'Camera':
-        return new CameraComponent();
-      default:
-        return null;
-    }
+    return componentRegistry.createComponent(componentType);
   }
 
   /**
-   * Get component class by type string
-   * 通过类型字符串获取组件类
+   * Get component class by type string using ComponentRegistry
+   * 使用ComponentRegistry通过类型字符串获取组件类
    */
   private _getComponentClassByType(componentType: string): any {
     // Normalize component type name (remove "Component" suffix if present)
@@ -286,23 +269,19 @@ export class EditorStoreIntegration {
       ? componentType.slice(0, -'Component'.length)
       : componentType;
     
+    // Try to find in registry first
+    const metadata = componentRegistry.get(normalizedType);
+    if (metadata) {
+      const component = metadata.createInstance();
+      return component.constructor;
+    }
+    
+    // Fallback for commonly used components
     switch (normalizedType) {
       case 'Transform':
         return TransformComponent;
-      case 'MeshRenderer':
-        return MeshRendererComponent;
-      case 'BoxCollider':
-        return BoxColliderComponent;
-      case 'SphereCollider':
-        return SphereColliderComponent;
-      case 'RigidBody':
-        return RigidBodyComponent;
-      case 'AudioSource':
-        return AudioSourceComponent;
-      case 'Light':
-        return LightComponent;
-      case 'Camera':
-        return CameraComponent;
+      case 'EditorMetadata':
+        return EditorMetadataComponent;
       default:
         console.warn('Unknown component type:', componentType, 'normalized to:', normalizedType);
         return null;
@@ -322,64 +301,8 @@ export class EditorStoreIntegration {
 
 // Import component types for type checking
 import { EditorMetadataComponent, TransformComponent } from '@esengine/nova-ecs-core';
-import { MeshRendererComponent } from '@esengine/nova-ecs-render-three';
-import { BoxColliderComponent } from './EditorWorld';
 import { Component } from '@esengine/nova-ecs';
+import { componentRegistry } from '../core/ComponentRegistry';
 
-// Additional component types for editor functionality
-export class SphereColliderComponent extends Component {
-  constructor(
-    public radius: number = 0.5,
-    public center: { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 },
-    public isTrigger: boolean = false
-  ) {
-    super();
-  }
-}
-
-export class RigidBodyComponent extends Component {
-  constructor(
-    public mass: number = 1.0,
-    public drag: number = 0.0,
-    public angularDrag: number = 0.05,
-    public useGravity: boolean = true
-  ) {
-    super();
-  }
-}
-
-export class AudioSourceComponent extends Component {
-  constructor(
-    public clip: string | null = null,
-    public volume: number = 1.0,
-    public pitch: number = 1.0,
-    public loop: boolean = false,
-    public playOnAwake: boolean = true
-  ) {
-    super();
-  }
-}
-
-export class LightComponent extends Component {
-  constructor(
-    public type: 'directional' | 'point' | 'spot' = 'directional',
-    public color: { r: number; g: number; b: number } = { r: 1, g: 1, b: 1 },
-    public intensity: number = 1.0,
-    public range: number = 10.0,
-    public angle: number = 30.0
-  ) {
-    super();
-  }
-}
-
-export class CameraComponent extends Component {
-  constructor(
-    public fov: number = 75,
-    public near: number = 0.1,
-    public far: number = 1000,
-    public orthographic: boolean = false,
-    public orthographicSize: number = 5
-  ) {
-    super();
-  }
-}
+// Legacy components now managed by ComponentRegistry
+// 遗留组件现在由ComponentRegistry管理

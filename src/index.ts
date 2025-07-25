@@ -10,14 +10,8 @@ export { EditorWorld, BoxColliderComponent } from './ecs';
 export { EditorMetadataComponent, TransformComponent } from '@esengine/nova-ecs-core';
 export { MeshRendererComponent } from './ecs';
 export { EditorEvents } from './ecs';
-export { 
-  EditorStoreIntegration,
-  SphereColliderComponent,
-  RigidBodyComponent,
-  AudioSourceComponent,
-  LightComponent,
-  CameraComponent 
-} from './ecs';
+export { EditorStoreIntegration } from './ecs';
+export { componentRegistry, ComponentCategory } from './core/ComponentRegistry';
 export type { 
   EditorEventMap,
   EditorEventPayload,

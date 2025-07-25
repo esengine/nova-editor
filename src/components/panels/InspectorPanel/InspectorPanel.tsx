@@ -1,9 +1,12 @@
 /**
- * Inspector Panel - Entity and component property editor
- * 检查器面板 - 实体和组件属性编辑器
+ * Inspector Panel - Uses nova-ecs-editor package for component metadata
+ * 检查器面板 - 使用nova-ecs-editor包获取组件元数据
+ * 
+ * This inspector uses the nova-ecs-editor package for clean separation between runtime and editor code.
+ * 该检查器使用nova-ecs-editor包在运行时和编辑器代码之间进行清晰分离。
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   Card, 
   Button, 
@@ -14,10 +17,13 @@ import {
   Select, 
   Tooltip,
   Empty,
-  Tag
+  Tag,
+  Slider,
+  ColorPicker,
+  Divider,
+  Collapse
 } from 'antd';
 import {
-  PlusOutlined,
   DeleteOutlined,
   SettingOutlined,
   EyeOutlined,
@@ -25,351 +31,408 @@ import {
 } from '@ant-design/icons';
 import { useEditorStore } from '../../../stores/editorStore';
 import {
-  EditorMetadataComponent,
-  TransformComponent,
-  MeshRendererComponent,
-  BoxColliderComponent,
-  SphereColliderComponent,
-  RigidBodyComponent,
-  LightComponent,
-  CameraComponent
-} from '../../../ecs';
-import type { EntityId } from '@esengine/nova-ecs';
+  canRemoveComponent,
+  getEditorComponentRegistry,
+  type ComponentRegistration,
+  type PropertyMetadata
+} from '@esengine/nova-ecs-editor';
+import { PhysicsTransformComponent } from '@esengine/nova-ecs-physics-core';
+import type { EntityId, ComponentType } from '@esengine/nova-ecs';
+import { ComponentSelector } from './ComponentSelector';
 
 const { Option } = Select;
 
 /**
- * Mock entity data structure
- * 模拟实体数据结构
+ * Property editor based on metadata from nova-ecs-editor
+ * 基于nova-ecs-editor元数据的属性编辑器
  */
-interface MockEntity {
-  id: string;
-  name: string;
-  active: boolean;
-  components: MockComponent[];
-}
-
-interface MockComponent {
-  id: string;
-  type: string;
-  name: string;
-  enabled: boolean;
-  properties: Record<string, any>;
-}
-
-/**
- * Mock entity database
- * 模拟实体数据库
- */
-// Mock data removed - now using real NovaECS entities
-
-/**
- * Property editor components
- * 属性编辑器组件
- */
-const Vector3Editor: React.FC<{
-  label: string;
-  value: { x: number; y: number; z: number };
-  onChange: (value: { x: number; y: number; z: number }) => void;
-}> = ({ label, value, onChange }) => (
-  <div style={{ marginBottom: '12px' }}>
-    <div style={{ marginBottom: '4px', fontSize: '12px', color: '#a0a0a0' }}>
-      {label}
-    </div>
-    <Space.Compact style={{ width: '100%' }}>
-      <InputNumber
-        size="small"
-        placeholder="X"
-        value={value.x}
-        onChange={(x) => onChange({ ...value, x: x || 0 })}
-        step={0.1}
-        precision={2}
-        style={{ width: '33.33%' }}
-      />
-      <InputNumber
-        size="small"
-        placeholder="Y"
-        value={value.y}
-        onChange={(y) => onChange({ ...value, y: y || 0 })}
-        step={0.1}
-        precision={2}
-        style={{ width: '33.33%' }}
-      />
-      <InputNumber
-        size="small"
-        placeholder="Z"
-        value={value.z}
-        onChange={(z) => onChange({ ...value, z: z || 0 })}
-        step={0.1}
-        precision={2}
-        style={{ width: '33.33%' }}
-      />
-    </Space.Compact>
-  </div>
-);
-
 const PropertyEditor: React.FC<{
   property: string;
   value: any;
+  metadata: PropertyMetadata;
   onChange: (value: any) => void;
-}> = ({ property, value, onChange }) => {
-  // Vector3 properties
-  if (typeof value === 'object' && value !== null && 'x' in value && 'y' in value && 'z' in value) {
-    return (
-      <Vector3Editor
-        label={property}
-        value={value}
-        onChange={onChange}
-      />
-    );
-  }
+}> = ({ property, value, metadata, onChange }) => {
+  const displayName = metadata.displayName || property;
   
-  // Boolean properties
-  if (typeof value === 'boolean') {
+  // Use local state for input values to prevent conflicts with ECS updates
+  const [localValue, setLocalValue] = useState(value);
+  const [isEditing, setIsEditing] = useState(false);
+  
+  // Update local value when prop value changes (but not while editing)
+  useEffect(() => {
+    if (!isEditing) {
+      setLocalValue(value);
+    }
+  }, [value, isEditing]);
+  
+  // Handle committing changes
+  const commitChange = useCallback((newValue: any) => {
+    onChange(newValue);
+    setLocalValue(newValue);
+    setIsEditing(false);
+  }, [onChange]);
+  
+  // Handle starting edit
+  const startEdit = useCallback(() => {
+    setIsEditing(true);
+  }, []);
+
+  // Vector3 properties - handle objects with x, y, z properties
+  // Vector3属性 - 处理具有x、y、z属性的对象
+  if (metadata.type === 'vector3' && typeof value === 'object' && value !== null && 'x' in value && 'y' in value && 'z' in value) {
     return (
-      <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: '12px', color: '#a0a0a0' }}>{property}</span>
-        <Switch size="small" checked={value} onChange={onChange} />
+      <div style={{ marginBottom: '12px' }}>
+        <div style={{ marginBottom: '4px', fontSize: '12px', color: '#a0a0a0' }}>
+          {displayName}
+        </div>
+        <Space.Compact style={{ width: '100%' }}>
+          <InputNumber
+            size="small"
+            placeholder="X"
+            value={localValue.x}
+            onChange={(x) => {
+              const newValue = { ...localValue, x: x || 0 };
+              setLocalValue(newValue);
+              setIsEditing(true);
+            }}
+            onBlur={() => commitChange(localValue)}
+            onPressEnter={() => commitChange(localValue)}
+            onFocus={startEdit}
+            step={0.1}
+            precision={2}
+            style={{ width: '33.33%' }}
+            disabled={metadata.readonly || false}
+          />
+          <InputNumber
+            size="small"
+            placeholder="Y"
+            value={localValue.y}
+            onChange={(y) => {
+              const newValue = { ...localValue, y: y || 0 };
+              setLocalValue(newValue);
+              setIsEditing(true);
+            }}
+            onBlur={() => commitChange(localValue)}
+            onPressEnter={() => commitChange(localValue)}
+            onFocus={startEdit}
+            step={0.1}
+            precision={2}
+            style={{ width: '33.33%' }}
+            disabled={metadata.readonly || false}
+          />
+          <InputNumber
+            size="small"
+            placeholder="Z"
+            value={localValue.z}
+            onChange={(z) => {
+              const newValue = { ...localValue, z: z || 0 };
+              setLocalValue(newValue);
+              setIsEditing(true);
+            }}
+            onBlur={() => commitChange(localValue)}
+            onPressEnter={() => commitChange(localValue)}
+            onFocus={startEdit}
+            step={0.1}
+            precision={2}
+            style={{ width: '33.33%' }}
+            disabled={metadata.readonly || false}
+          />
+        </Space.Compact>
+        {metadata.description && (
+          <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
+            {metadata.description}
+          </div>
+        )}
       </div>
     );
   }
   
-  // Number properties
-  if (typeof value === 'number') {
+  // Boolean properties - render as switch
+  // 布尔属性 - 渲染为开关
+  if (metadata.type === 'boolean') {
     return (
-      <div style={{ marginBottom: '12px' }}>
-        <div style={{ marginBottom: '4px', fontSize: '12px', color: '#a0a0a0' }}>
-          {property}
+      <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <span style={{ fontSize: '12px', color: '#a0a0a0' }}>{displayName}</span>
+          {metadata.description && (
+            <div style={{ fontSize: '11px', color: '#666' }}>{metadata.description}</div>
+          )}
         </div>
-        <InputNumber
-          size="small"
-          value={value}
+        <Switch 
+          size="small" 
+          checked={value} 
           onChange={onChange}
-          step={0.1}
-          precision={2}
-          style={{ width: '100%' }}
+          disabled={metadata.readonly || false}
         />
       </div>
     );
   }
+
+  // Range properties - render as slider
+  // 范围属性 - 渲染为滑块
+  if (metadata.type === 'range') {
+    return (
+      <div style={{ marginBottom: '12px' }}>
+        <div style={{ marginBottom: '4px', fontSize: '12px', color: '#a0a0a0' }}>
+          {displayName}
+        </div>
+        <Slider
+          min={metadata.min || 0}
+          max={metadata.max || 100}
+          step={metadata.step || 1}
+          value={value}
+          onChange={onChange}
+          disabled={metadata.readonly || false}
+          tooltip={{ formatter: (val) => `${val}` }}
+        />
+        {metadata.description && (
+          <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
+            {metadata.description}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Enum properties - render as select dropdown
+  // 枚举属性 - 渲染为选择下拉框
+  if (metadata.type === 'enum' && metadata.options) {
+    return (
+      <div style={{ marginBottom: '12px' }}>
+        <div style={{ marginBottom: '4px', fontSize: '12px', color: '#a0a0a0' }}>
+          {displayName}
+        </div>
+        <Select
+          size="small"
+          value={value}
+          onChange={onChange}
+          style={{ width: '100%' }}
+          disabled={metadata.readonly || false}
+        >
+          {metadata.options.map(option => (
+            <Option key={option} value={option}>{option}</Option>
+          ))}
+        </Select>
+        {metadata.description && (
+          <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
+            {metadata.description}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Color properties - render with color picker
+  // 颜色属性 - 使用颜色选择器渲染
+  if (metadata.type === 'color') {
+    return (
+      <div style={{ marginBottom: '12px' }}>
+        <div style={{ marginBottom: '4px', fontSize: '12px', color: '#a0a0a0' }}>
+          {displayName}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <ColorPicker
+            value={value}
+            onChange={(color) => onChange(color.toHexString())}
+            disabled={metadata.readonly || false}
+          />
+          <Input
+            size="small"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            style={{ flex: 1 }}
+            disabled={metadata.readonly || false}
+          />
+        </div>
+        {metadata.description && (
+          <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
+            {metadata.description}
+          </div>
+        )}
+      </div>
+    );
+  }
   
-  // String properties
+  // Number properties - render as input number
+  // 数字属性 - 渲染为数字输入框
+  if (metadata.type === 'number') {
+    return (
+      <div style={{ marginBottom: '12px' }}>
+        <div style={{ marginBottom: '4px', fontSize: '12px', color: '#a0a0a0' }}>
+          {displayName}
+        </div>
+        <InputNumber
+          size="small"
+          value={localValue}
+          onChange={(newValue) => {
+            setLocalValue(newValue);
+            setIsEditing(true);
+          }}
+          onBlur={() => commitChange(localValue)}
+          onPressEnter={() => commitChange(localValue)}
+          onFocus={startEdit}
+          min={metadata.min}
+          max={metadata.max}
+          step={metadata.step || 0.1}
+          precision={2}
+          style={{ width: '100%' }}
+          disabled={metadata.readonly || false}
+        />
+        {metadata.description && (
+          <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
+            {metadata.description}
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  // String properties (default) - render as text input
+  // 字符串属性（默认） - 渲染为文本输入框
   return (
     <div style={{ marginBottom: '12px' }}>
       <div style={{ marginBottom: '4px', fontSize: '12px', color: '#a0a0a0' }}>
-        {property}
+        {displayName}
       </div>
       <Input
         size="small"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        value={localValue}
+        onChange={(e) => {
+          setLocalValue(e.target.value);
+          setIsEditing(true);
+        }}
+        onBlur={() => commitChange(localValue)}
+        onPressEnter={() => commitChange(localValue)}
+        onFocus={startEdit}
+        disabled={metadata.readonly || false}
       />
+      {metadata.description && (
+        <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
+          {metadata.description}
+        </div>
+      )}
     </div>
   );
 };
 
 /**
- * Component editor
- * 组件编辑器
+ * Component editor using nova-ecs-editor metadata
+ * 使用nova-ecs-editor元数据的组件编辑器
  */
 const ComponentEditor: React.FC<{
-  component: MockComponent;
+  componentType: ComponentType;
+  componentInstance: any;
+  registration: ComponentRegistration;
   onToggle: () => void;
   onRemove: () => void;
   onPropertyChange: (property: string, value: any) => void;
-}> = ({ component, onToggle, onRemove, onPropertyChange }) => {
-  const getComponentIcon = (type: string) => {
-    switch (type) {
-      case 'Transform': return '🔧';
-      case 'MeshRenderer': return '🎨';
-      case 'BoxCollider': return '📦';
-      case 'SphereCollider': return '🔵';
-      case 'RigidBody': return '🏃';
-      case 'Light': return '💡';
-      case 'Camera': return '📷';
-      case 'AIController': return '🤖';
-      default: return '⚙️';
-    }
-  };
+}> = ({ componentType, componentInstance, registration, onToggle, onRemove, onPropertyChange }) => {
+  const [enabled, setEnabled] = useState(componentInstance?.enabled ?? true);
+  const [collapsed, setCollapsed] = useState(false);
+  
+  const { metadata, properties } = registration;
 
-  return (
-    <Card
-      size="small"
-      style={{
-        marginBottom: '8px',
-        backgroundColor: component.enabled ? '#1f1f1f' : '#2a2a2a',
-        borderColor: component.enabled ? '#303030' : '#404040'
-      }}
-      title={
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span>{getComponentIcon(component.type)}</span>
-          <span style={{ color: component.enabled ? '#ffffff' : '#666666' }}>
-            {component.name}
-          </span>
-          <Tag color={component.enabled ? 'green' : 'default'} style={{ fontSize: '11px' }}>
-            {component.type}
-          </Tag>
+  const collapseItems = [
+    {
+      key: 'properties',
+      label: (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>{metadata.icon || '📦'}</span>
+            <span style={{ color: enabled ? '#ffffff' : '#666666' }}>
+              {metadata.displayName}
+            </span>
+            <Tag color={enabled ? 'green' : 'default'} style={{ fontSize: '11px' }}>
+              {componentType.name}
+            </Tag>
+            {metadata.category && (
+              <Tag color="blue" style={{ fontSize: '10px' }}>
+                {metadata.category}
+              </Tag>
+            )}
+          </div>
+          <Space size="small" onClick={(e) => e.stopPropagation()}>
+            <Tooltip title={enabled ? 'Disable Component 禁用组件' : 'Enable Component 启用组件'}>
+              <Button
+                type="text"
+                size="small"
+                icon={enabled ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                onClick={() => {
+                  setEnabled(!enabled);
+                  onToggle();
+                }}
+              />
+            </Tooltip>
+            <Tooltip title="Component Settings 组件设置">
+              <Button
+                type="text"
+                size="small"
+                icon={<SettingOutlined />}
+              />
+            </Tooltip>
+            <Tooltip title="Remove Component 移除组件">
+              <Button
+                type="text"
+                size="small"
+                icon={<DeleteOutlined />}
+                onClick={onRemove}
+                disabled={metadata.removable === false}
+              />
+            </Tooltip>
+          </Space>
         </div>
-      }
-      extra={
-        <Space size="small">
-          <Tooltip title={component.enabled ? 'Disable' : 'Enable'}>
-            <Button
-              type="text"
-              size="small"
-              icon={component.enabled ? <EyeOutlined /> : <EyeInvisibleOutlined />}
-              onClick={onToggle}
-            />
-          </Tooltip>
-          <Tooltip title="Component Settings">
-            <Button
-              type="text"
-              size="small"
-              icon={<SettingOutlined />}
-            />
-          </Tooltip>
-          <Tooltip title="Remove Component">
-            <Button
-              type="text"
-              size="small"
-              icon={<DeleteOutlined />}
-              onClick={onRemove}
-              disabled={component.type === 'Transform'} // Can't remove Transform
-            />
-          </Tooltip>
-        </Space>
-      }
-    >
-      {component.enabled && (
+      ),
+      children: enabled && (
         <div style={{ padding: '8px 0' }}>
-          {Object.entries(component.properties).map(([property, value]) => (
-            <PropertyEditor
-              key={property}
-              property={property}
-              value={value}
-              onChange={(newValue) => onPropertyChange(property, newValue)}
-            />
-          ))}
+          {metadata.description && (
+            <>
+              <div style={{ fontSize: '11px', color: '#888', marginBottom: '12px' }}>
+                {metadata.description}
+              </div>
+              <Divider style={{ margin: '8px 0' }} />
+            </>
+          )}
+          {Array.from(properties.entries()).map(([propertyName, propertyMetadata]) => {
+            const value = componentInstance[propertyName];
+            return (
+              <PropertyEditor
+                key={propertyName}
+                property={propertyName}
+                value={value}
+                metadata={propertyMetadata}
+                onChange={(newValue) => onPropertyChange(propertyName, newValue)}
+              />
+            );
+          })}
         </div>
-      )}
-    </Card>
-  );
-};
-
-/**
- * Entity header component
- * 实体标题组件
- */
-const EntityHeader: React.FC<{
-  entity: MockEntity;
-  onNameChange: (name: string) => void;
-  onActiveToggle: () => void;
-}> = ({ entity, onNameChange, onActiveToggle }) => (
-  <Card
-    size="small"
-    style={{
-      marginBottom: '16px',
-      backgroundColor: '#1a1a1a',
-      borderColor: '#303030'
-    }}
-  >
-    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-      <Switch
-        size="small"
-        checked={entity.active}
-        onChange={onActiveToggle}
-      />
-      <Input
-        value={entity.name}
-        onChange={(e) => onNameChange(e.target.value)}
-        style={{ flex: 1 }}
-        size="small"
-      />
-      <Tag color={entity.active ? 'green' : 'red'}>
-        {entity.active ? 'Active' : 'Inactive'}
-      </Tag>
-    </div>
-    
-    <div style={{ fontSize: '12px', color: '#666' }}>
-      ID: {entity.id} | Components: {entity.components.length}
-    </div>
-  </Card>
-);
-
-const AddComponentSelector: React.FC<{
-  onAddComponent: (componentType: string) => void;
-}> = ({ onAddComponent }) => {
-  const [selectedType, setSelectedType] = useState<string>('');
-  const [availableComponents, setAvailableComponents] = useState<Array<{
-    name: string;
-    displayName: string;
-    category: string;
-  }>>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    setIsLoading(true);
-    import('@esengine/nova-ecs-editor').then(({ getAvailableComponentTypes }) => {
-      const components = getAvailableComponentTypes().map(comp => ({
-        name: comp.componentType.name,
-        displayName: comp.registration.metadata.displayName,
-        category: comp.registration.metadata.category || 'Other'
-      }));
-      setAvailableComponents(components);
-      setIsLoading(false);
-    }).catch(console.error);
-  }, []);
+      ),
+      style: {
+        backgroundColor: 'transparent',
+        borderColor: 'transparent'
+      }
+    }
+  ];
 
   return (
-    <Card
-      size="small"
-      style={{
-        marginBottom: '16px',
-        backgroundColor: '#1a1a1a',
-        borderColor: '#303030'
-      }}
-      title="Add Component"
-    >
-      <Space.Compact style={{ width: '100%' }}>
-        <Select
-          placeholder={isLoading ? "Loading components..." : "Select component type"}
-          value={selectedType}
-          onChange={setSelectedType}
-          style={{ flex: 1 }}
-          size="small"
-          loading={isLoading}
-          disabled={isLoading}
-        >
-          {availableComponents.map(comp => (
-            <Option key={comp.name} value={comp.name}>
-              <Space>
-                <span>{comp.displayName}</span>
-                <Tag color="blue">{comp.category}</Tag>
-              </Space>
-            </Option>
-          ))}
-        </Select>
-        <Button
-          type="primary"
-          size="small"
-          icon={<PlusOutlined />}
-          disabled={!selectedType}
-          onClick={() => {
-            if (selectedType) {
-              onAddComponent(selectedType);
-              setSelectedType('');
-            }
-          }}
-        >
-          Add
-        </Button>
-      </Space.Compact>
-    </Card>
+    <div style={{ marginBottom: '8px' }}>
+      <Collapse
+        size="small"
+        ghost
+        activeKey={collapsed ? [] : ['properties']}
+        onChange={(keys) => setCollapsed(keys.length === 0)}
+        style={{
+          backgroundColor: enabled ? '#1f1f1f' : '#2a2a2a',
+          border: `1px solid ${enabled ? '#303030' : '#404040'}`,
+          borderRadius: '6px'
+        }}
+        items={collapseItems}
+      />
+    </div>
   );
 };
 
 /**
- * Main InspectorPanel component
+ * Main Inspector Panel component
  * 主检查器面板组件
  */
 export interface InspectorPanelProps {
@@ -383,182 +446,173 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
 }) => {
   const selectedEntities = useEditorStore(state => state.selection.selectedEntities);
   const primarySelection = useEditorStore(state => state.selection.primarySelection);
+  // Only subscribe to world instance, not the entire world state object to reduce re-renders
   const world = useEditorStore(state => state.world.instance);
   const setEntityName = useEditorStore(state => state.setEntityName);
   const setEntityActive = useEditorStore(state => state.setEntityActive);
   const addComponent = useEditorStore(state => state.addComponent);
   const removeComponent = useEditorStore(state => state.removeComponent);
   const updateComponentProperty = useEditorStore(state => state.updateComponentProperty);
-  // Remove force update mechanism to prevent input disruption
-  // 移除强制更新机制以防止输入中断
+  
+  // Force update counter to trigger re-renders when component properties change
+  const [forceUpdateCounter, setForceUpdateCounter] = useState(0);
+  
+  // Use stable references to avoid unnecessary re-renders
+  const storeActions = useMemo(() => ({
+    setEntityName,
+    setEntityActive,
+    addComponent,
+    removeComponent,
+    updateComponentProperty
+  }), [setEntityName, setEntityActive, addComponent, removeComponent, updateComponentProperty]);
 
-  // Get the primary selected entity from NovaECS world
+  // Get the primary selected entity
+  // 获取主选中实体
   const selectedEntity = primarySelection && typeof primarySelection === 'number' && world
     ? world.getEntity(primarySelection as EntityId)
     : null;
+
+  // Memoize entity components calculation to prevent unnecessary recalculations
+  // 记忆化实体组件计算以防止不必要的重新计算
+  const entityComponents = useMemo(() => {
+    if (!selectedEntity) return [];
     
-  // Get entity metadata for display
-  const entityMetadata = selectedEntity ? selectedEntity.getComponent(EditorMetadataComponent) : null;
-  const entityTransform = selectedEntity ? selectedEntity.getComponent(TransformComponent) : null;
+    const registry = getEditorComponentRegistry();
+    const allComponents = selectedEntity.getComponents();
+    
+    const components = allComponents
+      .map((component: any) => {
+        const componentType = component.constructor as ComponentType;
+        // Match by component name to handle multiple import paths
+        const matchingRegistration = registry.getAll().find(reg => reg.componentType.name === componentType.name);
+        
+        return matchingRegistration ? {
+          componentType,
+          componentInstance: component,
+          registration: matchingRegistration
+        } : null;
+      })
+      .filter(Boolean)
+      .sort((a: any, b: any) => {
+        // Sort by metadata order, then by name
+        // 按元数据顺序排序，然后按名称排序
+        const aOrder = a!.registration.metadata.order ?? 999;
+        const bOrder = b!.registration.metadata.order ?? 999;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        return a!.componentType.name.localeCompare(b!.componentType.name);
+      }) as Array<{ componentType: ComponentType; componentInstance: any; registration: ComponentRegistration }>;
+    
+    return components;
+  }, [selectedEntity, forceUpdateCounter]);
   
-  // Create mock entity structure for UI compatibility
-  const mockEntity = selectedEntity ? {
-    id: selectedEntity.id.toString(),
-    name: entityMetadata?.name || `Entity_${selectedEntity.id}`,
-    active: selectedEntity.active,
-    components: [
-      {
-        id: 'transform',
-        type: 'Transform',
-        name: 'Transform',
-        enabled: true,
-        properties: entityTransform ? {
-          position: entityTransform.position,
-          rotation: entityTransform.rotation,
-          scale: entityTransform.scale
-        } : { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 } }
-      },
-      // Add other components as needed
-      ...(selectedEntity.getComponent(MeshRendererComponent) ? [{
-        id: 'renderer',
-        type: 'MeshRenderer',
-        name: 'Mesh Renderer',
-        enabled: true,
-        properties: {
-          material: selectedEntity.getComponent(MeshRendererComponent)!.material,
-          castShadows: selectedEntity.getComponent(MeshRendererComponent)!.castShadows,
-          receiveShadows: selectedEntity.getComponent(MeshRendererComponent)!.receiveShadows
-        }
-      }] : []),
-      ...(selectedEntity.getComponent(BoxColliderComponent) ? [{
-        id: 'collider',
-        type: 'BoxCollider',
-        name: 'Box Collider',
-        enabled: true,
-        properties: {
-          size: selectedEntity.getComponent(BoxColliderComponent)!.size,
-          center: selectedEntity.getComponent(BoxColliderComponent)!.center,
-          isTrigger: selectedEntity.getComponent(BoxColliderComponent)!.isTrigger
-        }
-      }] : []),
-      // Add other component types
-      ...(selectedEntity.getComponent(SphereColliderComponent) ? [{
-        id: 'spherecollider',
-        type: 'SphereCollider',
-        name: 'Sphere Collider',
-        enabled: true,
-        properties: {
-          radius: selectedEntity.getComponent(SphereColliderComponent)!.radius,
-          center: selectedEntity.getComponent(SphereColliderComponent)!.center,
-          isTrigger: selectedEntity.getComponent(SphereColliderComponent)!.isTrigger
-        }
-      }] : []),
-      ...(selectedEntity.getComponent(RigidBodyComponent) ? [{
-        id: 'rigidbody',
-        type: 'RigidBody',
-        name: 'Rigid Body',
-        enabled: true,
-        properties: {
-          mass: selectedEntity.getComponent(RigidBodyComponent)!.mass,
-          drag: selectedEntity.getComponent(RigidBodyComponent)!.drag,
-          angularDrag: selectedEntity.getComponent(RigidBodyComponent)!.angularDrag,
-          useGravity: selectedEntity.getComponent(RigidBodyComponent)!.useGravity
-        }
-      }] : []),
-      ...(selectedEntity.getComponent(LightComponent) ? [{
-        id: 'light',
-        type: 'Light',
-        name: 'Light',
-        enabled: true,
-        properties: {
-          type: selectedEntity.getComponent(LightComponent)!.type,
-          color: selectedEntity.getComponent(LightComponent)!.color,
-          intensity: selectedEntity.getComponent(LightComponent)!.intensity,
-          shadows: selectedEntity.getComponent(LightComponent)!.shadows
-        }
-      }] : []),
-      ...(selectedEntity.getComponent(CameraComponent) ? [{
-        id: 'camera',
-        type: 'Camera',
-        name: 'Camera',
-        enabled: true,
-        properties: {
-          fov: selectedEntity.getComponent(CameraComponent)!.fov,
-          type: selectedEntity.getComponent(CameraComponent)!.type,
-          near: selectedEntity.getComponent(CameraComponent)!.near,
-          far: selectedEntity.getComponent(CameraComponent)!.far
-        }
-      }] : [])
-    ]
-  } : null;
+  // Listen for component and property changes to trigger re-render
+  useEffect(() => {
+    if (!world) return;
+    
+    const unsubscribeProperty = world.editorEvents.on('propertyChanged', () => {
+      setForceUpdateCounter(prev => prev + 1);
+    });
+    
+    const unsubscribeComponentAdded = world.editorEvents.on('componentAdded', () => {
+      setForceUpdateCounter(prev => prev + 1);
+    });
+    
+    const unsubscribeComponentRemoved = world.editorEvents.on('componentRemoved', () => {
+      setForceUpdateCounter(prev => prev + 1);
+    });
+    
+    return () => {
+      unsubscribeProperty();
+      unsubscribeComponentAdded();
+      unsubscribeComponentRemoved();
+    };
+  }, [world]);
 
-  // Real update handlers that work with NovaECS world
-  const handleEntityNameChange = (name: string) => {
+  // Memoize components without metadata calculation
+  // 记忆化没有元数据的组件计算
+  const componentsWithoutMetadata = useMemo(() => {
+    if (!selectedEntity) return [];
+    
+    const registry = getEditorComponentRegistry();
+    return selectedEntity.getComponents()
+      .filter((component: any) => {
+        const componentType = component.constructor as ComponentType;
+        const matchingRegistration = registry.getAll().find(reg => reg.componentType.name === componentType.name);
+        return !matchingRegistration;
+      })
+      .map((component: any) => ({
+        componentType: component.constructor as ComponentType,
+        componentInstance: component
+      }));
+  }, [selectedEntity]);
+
+  // Memoize event handlers to prevent unnecessary re-renders
+  // 记忆化事件处理程序以防止不必要的重新渲染
+  const handleEntityNameChange = useMemo(() => (name: string) => {
     if (selectedEntity && typeof primarySelection === 'number') {
-      setEntityName(primarySelection, name);
+      storeActions.setEntityName(primarySelection, name);
     }
-  };
+  }, [selectedEntity, primarySelection, storeActions]);
 
-  const handleEntityActiveToggle = () => {
+  const handleEntityActiveToggle = useMemo(() => () => {
     if (selectedEntity && typeof primarySelection === 'number') {
-      setEntityActive(primarySelection, !selectedEntity.active);
+      storeActions.setEntityActive(primarySelection, !selectedEntity.active);
     }
-  };
+  }, [selectedEntity, primarySelection, storeActions]);
 
-  const handleComponentToggle = (componentId: string) => {
-    // Component enable/disable would need to be implemented in the ECS integration
-    // For now, we'll just show a message
-    console.log('Component toggle not yet implemented:', componentId);
-  };
+  const handleComponentToggle = useMemo(() => (_componentType: ComponentType) => {
+    // Component toggle not yet implemented
+  }, []);
 
-  const handleComponentRemove = (componentId: string) => {
+  const handleComponentRemove = useMemo(() => (componentType: ComponentType) => {
+    if (selectedEntity && typeof primarySelection === 'number' && canRemoveComponent(componentType)) {
+      storeActions.removeComponent(primarySelection, componentType.name);
+    }
+  }, [selectedEntity, primarySelection, storeActions]);
+
+  const handlePropertyChange = useMemo(() => (componentType: ComponentType, property: string, value: any) => {
     if (selectedEntity && typeof primarySelection === 'number') {
-      // Map component ID to type
-      const componentTypeMap: Record<string, string> = {
-        'renderer': 'MeshRenderer',
-        'collider': 'BoxCollider',
-        'spherecollider': 'SphereCollider',
-        'rigidbody': 'RigidBody',
-        'light': 'Light',
-        'camera': 'Camera',
-        'transform': 'Transform' // Transform cannot be removed
-      };
-      
-      const componentType = componentTypeMap[componentId];
-      if (componentType && componentType !== 'Transform') {
-        removeComponent(primarySelection, componentType);
+      const component = selectedEntity.getComponent(componentType);
+      if (component && property in component) {
+        const oldValue = (component as any)[property];
+        (component as any)[property] = value;
+        
+        // For TransformComponent, also update PhysicsTransformComponent if it exists
+        if (componentType.name === 'TransformComponent') {
+          const physicsTransform = selectedEntity.getComponent(PhysicsTransformComponent);
+          if (physicsTransform && property in physicsTransform) {
+            if (property === 'position' && value && typeof value === 'object') {
+              (physicsTransform as any)[property] = {
+                x: value.x || 0,
+                y: value.y || 0
+              };
+            } else {
+              (physicsTransform as any)[property] = value;
+            }
+          }
+        }
+        
+        // Emit the event directly
+        world?.editorEvents.emit('propertyChanged', {
+          entityId: primarySelection,
+          componentType: componentType.name,
+          property,
+          oldValue,
+          newValue: value
+        });
       }
     }
-  };
+  }, [selectedEntity, primarySelection, world]);
 
-  const handlePropertyChange = (componentId: string, property: string, value: any) => {
+  const handleAddComponent = useMemo(() => (componentTypeName: string) => {
     if (selectedEntity && typeof primarySelection === 'number') {
-      // Map component ID to type
-      const componentTypeMap: Record<string, string> = {
-        'transform': 'Transform',
-        'renderer': 'MeshRenderer',
-        'collider': 'BoxCollider',
-        'spherecollider': 'SphereCollider',
-        'rigidbody': 'RigidBody',
-        'light': 'Light',
-        'camera': 'Camera'
-      };
-      
-      const componentType = componentTypeMap[componentId];
-      if (componentType) {
-        updateComponentProperty(primarySelection, componentType, property, value);
-      }
+      storeActions.addComponent(primarySelection, componentTypeName);
     }
-  };
+  }, [selectedEntity, primarySelection, storeActions]);
 
-  const handleAddComponent = (componentType: string) => {
-    if (selectedEntity && typeof primarySelection === 'number') {
-      addComponent(primarySelection, componentType);
-    }
-  };
-
-  // Get default properties for component types
-  // Default properties now handled by component constructors
+  // Get entity name (for now, use a simple pattern)
+  // 获取实体名称（目前使用简单模式）
+  const entityName = `Entity_${selectedEntity?.id || 'Unknown'}`;
 
   return (
     <div
@@ -573,9 +627,9 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
       }}
       className={className}
     >
-      {!mockEntity ? (
+      {!selectedEntity ? (
         <Empty
-          description="Select an entity to inspect"
+          description="Select an entity to inspect 选择一个实体进行检查"
           style={{ 
             marginTop: '50%',
             transform: 'translateY(-50%)'
@@ -583,41 +637,111 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
         />
       ) : (
         <>
-          {/* Entity Header */}
-          <EntityHeader
-            entity={mockEntity}
-            onNameChange={handleEntityNameChange}
-            onActiveToggle={handleEntityActiveToggle}
+          {/* Entity Header - 实体头部 */}
+          <Card
+            size="small"
+            style={{
+              marginBottom: '16px',
+              backgroundColor: '#1a1a1a',
+              borderColor: '#303030'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+              <Switch
+                size="small"
+                checked={selectedEntity.active}
+                onChange={handleEntityActiveToggle}
+              />
+              <Input
+                value={entityName}
+                onChange={(e) => handleEntityNameChange(e.target.value)}
+                style={{ flex: 1 }}
+                size="small"
+              />
+              <Tag color={selectedEntity.active ? 'green' : 'red'}>
+                {selectedEntity.active ? 'Active 激活' : 'Inactive 非激活'}
+              </Tag>
+            </div>
+            
+            <div style={{ fontSize: '12px', color: '#666' }}>
+              ID: {selectedEntity.id} | Components 组件: {entityComponents.length + componentsWithoutMetadata.length}
+            </div>
+          </Card>
+
+          {/* Add Component - 添加组件 */}
+          <ComponentSelector
+            onAddComponent={handleAddComponent}
+            existingComponents={entityComponents.map(comp => comp.componentType.name)}
+            style={{ marginBottom: '16px' }}
           />
 
-          {/* Add Component */}
-          <AddComponentSelector onAddComponent={handleAddComponent} />
-
-          {/* Components */}
-          <div>
+          {/* Components with Metadata - 有元数据的组件 */}
+          <div style={{ marginBottom: '16px' }}>
             <h4 style={{ 
               color: '#ffffff', 
-              marginBottom: '12px',
+              margin: '0 0 12px 0',
               fontSize: '14px',
               fontWeight: 'bold'
             }}>
-              Components ({mockEntity.components.length})
+              Components 组件 ({entityComponents.length + componentsWithoutMetadata.length})
             </h4>
             
-            {mockEntity.components.map((component) => (
+            {entityComponents.map(({ componentType, componentInstance, registration }) => (
               <ComponentEditor
-                key={component.id}
-                component={component}
-                onToggle={() => handleComponentToggle(component.id)}
-                onRemove={() => handleComponentRemove(component.id)}
+                key={componentType.name}
+                componentType={componentType}
+                componentInstance={componentInstance}
+                registration={registration}
+                onToggle={() => handleComponentToggle(componentType)}
+                onRemove={() => handleComponentRemove(componentType)}
                 onPropertyChange={(property, value) => 
-                  handlePropertyChange(component.id, property, value)
+                  handlePropertyChange(componentType, property, value)
                 }
               />
             ))}
+
+            {/* Components without metadata (fallback) - 没有元数据的组件（后备） */}
+            {componentsWithoutMetadata.map(({ componentType }: any) => (
+              <Card
+                key={componentType.name}
+                size="small"
+                style={{
+                  marginBottom: '8px',
+                  backgroundColor: '#1f1f1f',
+                  borderColor: '#303030'
+                }}
+                title={
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>📦</span>
+                    <span style={{ color: '#ffffff' }}>
+                      {componentType.name}
+                    </span>
+                    <Tag color="orange" style={{ fontSize: '11px' }}>
+                      No Metadata
+                    </Tag>
+                  </div>
+                }
+                extra={
+                  <Space size="small">
+                    <Tooltip title="Remove Component">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<DeleteOutlined />}
+                        onClick={() => handleComponentRemove(componentType)}
+                      />
+                    </Tooltip>
+                  </Space>
+                }
+              >
+                <div style={{ color: '#a0a0a0', fontSize: '12px' }}>
+                  Component has no editor metadata registered 组件没有注册编辑器元数据
+                </div>
+              </Card>
+            ))}
           </div>
 
-          {/* Multi-selection info */}
+          {/* Multi-selection info - 多选信息 */}
           {selectedEntities.length > 1 && (
             <Card
               size="small"
@@ -628,9 +752,9 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
               }}
             >
               <div style={{ textAlign: 'center', color: '#a0a0a0' }}>
-                {selectedEntities.length} entities selected
+                {selectedEntities.length} entities selected 已选中{selectedEntities.length}个实体
                 <br />
-                <small>Showing primary selection: {mockEntity.name}</small>
+                <small>Showing primary selection 显示主选中: {entityName}</small>
               </div>
             </Card>
           )}

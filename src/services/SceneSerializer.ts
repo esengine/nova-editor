@@ -3,8 +3,7 @@
  * 场景序列化系统，用于保存和加载场景
  */
 
-import { EditorWorld, MeshRendererComponent, BoxColliderComponent } from '../ecs';
-import { EditorMetadataComponent, TransformComponent } from '@esengine/nova-ecs-core';
+import { EditorWorld } from '../ecs';
 import type { EntityId } from '@esengine/nova-ecs';
 import { assetService } from './AssetService';
 import { consoleService } from './ConsoleService';
@@ -157,115 +156,130 @@ export class SceneSerializer {
   }
   
   /**
-   * Serialize component
-   * 序列化组件
+   * Serialize component using generic approach
+   * 使用通用方法序列化组件
    */
   private async serializeComponent(component: any): Promise<SerializedComponent | null> {
     const type = component.constructor.name;
     
-    switch (type) {
-      case 'EditorMetadataComponent':
+    try {
+      // Check if component has custom serialization method
+      if (typeof component.serialize === 'function') {
         return {
           type,
-          data: {
-            name: component.name,
-            tags: component.tags,
-            layer: component.layer,
-            isStatic: component.isStatic
-          }
+          data: component.serialize()
         };
-        
-      case 'TransformComponent':
-        return {
-          type,
-          data: {
-            position: { ...component.position },
-            rotation: { ...component.rotation },
-            scale: { ...component.scale },
-            parentId: component.parentId
-          }
-        };
-        
-      case 'MeshRendererComponent':
-        return {
-          type,
-          data: {
-            material: component.material,
-            castShadows: component.castShadows,
-            receiveShadows: component.receiveShadows,
-            meshType: component.meshType
-          }
-        };
-        
-      case 'BoxColliderComponent':
-        return {
-          type,
-          data: {
-            size: { ...component.size },
-            center: { ...component.center },
-            isTrigger: component.isTrigger
-          }
-        };
-        
-      default:
-        // Generic serialization for unknown components
-        try {
-          return {
-            type,
-            data: JSON.parse(JSON.stringify(component))
-          };
-        } catch (error) {
-          consoleService.addLog('warning', `Failed to serialize component: ${type}`);
-          return null;
+      }
+      
+      // Generic serialization - serialize all enumerable properties
+      const data: any = {};
+      const keys = Object.getOwnPropertyNames(component);
+      
+      for (const key of keys) {
+        // Skip internal properties and methods
+        if (key.startsWith('_') || typeof component[key] === 'function') {
+          continue;
         }
+        
+        const value = component[key];
+        
+        // Handle different value types
+        if (value === null || value === undefined) {
+          data[key] = value;
+        } else if (typeof value === 'object') {
+          // Deep clone objects to avoid circular references
+          try {
+            data[key] = JSON.parse(JSON.stringify(value));
+          } catch (error) {
+            // Skip properties that can't be serialized
+            console.warn(`Skipping property ${key} of ${type}: serialization failed`);
+          }
+        } else {
+          // Primitive values
+          data[key] = value;
+        }
+      }
+      
+      return {
+        type,
+        data
+      };
+    } catch (error) {
+      consoleService.addLog('warning', `Failed to serialize component: ${type}`, error instanceof Error ? error.message : undefined);
+      return null;
     }
   }
   
   /**
-   * Deserialize component
-   * 反序列化组件
+   * Deserialize component using generic approach with component registry
+   * 使用组件注册表的通用方法反序列化组件
    */
   private async deserializeComponent(componentData: SerializedComponent): Promise<any | null> {
     const { type, data } = componentData;
     
     try {
-      switch (type) {
-        case 'EditorMetadataComponent':
-          const metadata = new EditorMetadataComponent(data.name);
-          if (data.tag !== undefined) metadata.tag = data.tag;
-          if (data.layer !== undefined) metadata.layer = data.layer;
-          return metadata;
-          
-        case 'TransformComponent':
-          const transform = new TransformComponent();
-          if (data.position !== undefined) transform.position = data.position;
-          if (data.rotation !== undefined) transform.rotation = data.rotation;
-          if (data.scale !== undefined) transform.scale = data.scale;
-          return transform;
-          
-        case 'MeshRendererComponent':
-          return new MeshRendererComponent(
-            data.material,
-            data.castShadows,
-            data.receiveShadows,
-            data.meshType
-          );
-          
-        case 'BoxColliderComponent':
-          return new BoxColliderComponent(
-            data.size,
-            data.center,
-            data.isTrigger
-          );
-          
-        default:
-          consoleService.addLog('warning', `Unknown component type: ${type}`);
-          return null;
+      // Try to get component class from registry
+      const componentClass = await this.getComponentClass(type);
+      if (!componentClass) {
+        consoleService.addLog('warning', `Unknown component type: ${type}`);
+        return null;
       }
+      
+      // Check if component has custom deserialization method
+      if (typeof componentClass.deserialize === 'function') {
+        return componentClass.deserialize(data);
+      }
+      
+      // Generic deserialization - create instance and set properties
+      const component = new componentClass();
+      
+      // Set all properties from data
+      for (const [key, value] of Object.entries(data)) {
+        if (key in component) {
+          try {
+            (component as any)[key] = value;
+          } catch (error) {
+            console.warn(`Failed to set property ${key} on ${type}:`, error);
+          }
+        }
+      }
+      
+      return component;
     } catch (error) {
       consoleService.addLog('error', `Failed to deserialize component: ${type}`, error instanceof Error ? error.stack : undefined);
       return null;
     }
+  }
+  
+  /**
+   * Get component class by type name
+   * 根据类型名称获取组件类
+   */
+  private async getComponentClass(type: string): Promise<any> {
+    // Component type to module mapping
+    const componentModules: Record<string, () => Promise<any>> = {
+      'EditorMetadataComponent': () => import('@esengine/nova-ecs-core').then(m => m.EditorMetadataComponent),
+      'TransformComponent': () => import('@esengine/nova-ecs-core').then(m => m.TransformComponent),
+      'MeshRendererComponent': () => import('@esengine/nova-ecs-render-three').then(m => m.MeshRendererComponent),
+      'BoxColliderComponent': () => import('../ecs/EditorWorld').then(m => m.BoxColliderComponent),
+      'ThreeLightComponent': () => import('@esengine/nova-ecs-render-three').then(m => m.ThreeLightComponent),
+      'ThreeCameraComponent': () => import('@esengine/nova-ecs-render-three').then(m => m.ThreeCameraComponent),
+      'PhysicsTransformComponent': () => import('@esengine/nova-ecs-physics-core').then(m => m.PhysicsTransformComponent),
+      'RigidBodyComponent': () => import('@esengine/nova-ecs-physics-core').then(m => m.RigidBodyComponent),
+      'ColliderComponent': () => import('@esengine/nova-ecs-physics-core').then(m => m.ColliderComponent),
+    };
+    
+    const moduleLoader = componentModules[type];
+    if (moduleLoader) {
+      try {
+        return await moduleLoader();
+      } catch (error) {
+        console.error(`Failed to load component module for ${type}:`, error);
+        return null;
+      }
+    }
+    
+    return null;
   }
   
   /**
@@ -441,6 +455,21 @@ export class SceneSerializer {
                   scale: { x: 1, y: 1, z: 1 },
                   parentId: null
                 }
+              },
+              {
+                type: 'ThreeCameraComponent',
+                data: {
+                  fov: 75,
+                  aspect: 1.777,
+                  near: 0.1,
+                  far: 1000,
+                  zoom: 1,
+                  isPerspective: true,
+                  left: -1,
+                  right: 1,
+                  top: 1,
+                  bottom: -1
+                }
               }
             ]
           },
@@ -464,6 +493,21 @@ export class SceneSerializer {
                   rotation: { x: -45, y: 30, z: 0 },
                   scale: { x: 1, y: 1, z: 1 },
                   parentId: null
+                }
+              },
+              {
+                type: 'ThreeLightComponent',
+                data: {
+                  lightType: 'directional',
+                  color: '#ffffff',
+                  intensity: 1.0,
+                  castShadow: true,
+                  distance: 0,
+                  decay: 1,
+                  angle: 1.0471975511965976,
+                  penumbra: 0,
+                  width: 10,
+                  height: 10
                 }
               }
             ]

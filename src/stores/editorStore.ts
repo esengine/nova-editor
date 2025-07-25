@@ -29,6 +29,7 @@ import { CommandManager, CreateEntityCommand, DeleteEntityCommand } from '../cor
 import { usePluginStore, PluginLoadingState } from './pluginStore';
 import { ThreeRenderPlugin } from '@esengine/nova-ecs-render-three';
 import { sceneSerializer } from '../services/SceneSerializer';
+import { physicsService } from '../services/PhysicsService';
 import type { EntityId } from '@esengine/nova-ecs';
 
 /**
@@ -610,6 +611,9 @@ export const useEditorStore = create<EditorState & EditorActions>()(
         const editorWorld = state.world.instance as EditorWorld;
         
         try {
+          // Start loading plugins
+          pluginStore.startLoading(['three-render', 'physics']);
+          
           // Create Three.js render plugin
           const threeRenderPlugin = new ThreeRenderPlugin({
             createDefaultEntities: false,
@@ -618,24 +622,39 @@ export const useEditorStore = create<EditorState & EditorActions>()(
             backgroundColor: '#2c2c2c'
           });
           
-          pluginStore.startLoading(['three-render']);
           pluginStore.setPluginState('three-render', PluginLoadingState.Loading);
           
-          const startTime = performance.now();
+          const threeStartTime = performance.now();
           
           await editorWorld.plugins.install(threeRenderPlugin);
           
-          const loadTime = performance.now() - startTime;
+          const threeLoadTime = performance.now() - threeStartTime;
           
-          pluginStore.setPluginLoadTime('three-render', loadTime);
+          pluginStore.setPluginLoadTime('three-render', threeLoadTime);
           pluginStore.setPluginState('three-render', PluginLoadingState.Loaded);
           pluginStore.registerPlugin(threeRenderPlugin);
+          
+          // Initialize physics system
+          pluginStore.setPluginState('physics', PluginLoadingState.Loading);
+          
+          const physicsStartTime = performance.now();
+          
+          await physicsService.initializePhysics(editorWorld);
+          
+          const physicsLoadTime = performance.now() - physicsStartTime;
+          
+          pluginStore.setPluginLoadTime('physics', physicsLoadTime);
+          pluginStore.setPluginState('physics', PluginLoadingState.Loaded);
           
           pluginStore.finishLoading();
           
         } catch (error) {
           console.error('Failed to initialize plugins:', error);
+          
+          // Set failed state for all plugins
           pluginStore.setPluginState('three-render', PluginLoadingState.Failed, error instanceof Error ? error.message : 'Unknown error');
+          pluginStore.setPluginState('physics', PluginLoadingState.Failed, error instanceof Error ? error.message : 'Unknown error');
+          
           pluginStore.finishLoading();
           throw error;
         }

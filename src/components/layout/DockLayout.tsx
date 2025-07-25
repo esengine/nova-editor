@@ -9,7 +9,7 @@ import { useEditorStore } from '../../stores/editorStore';
 import { PanelType } from '../../types';
 import { HierarchyPanel } from '../panels/HierarchyPanel';
 import { SceneViewPanel } from '../panels/SceneViewPanel';
-import { EditorInspectorPanel } from '../panels/InspectorPanel';
+import { InspectorPanel } from '../panels';
 import { AssetBrowserPanel } from '../panels/AssetBrowserPanel';
 import { ConsolePanel } from '../panels/ConsolePanel';
 import { CodeEditorPanel } from '../panels/CodeEditorPanel';
@@ -27,7 +27,7 @@ const renderPanelContent = (panelType: PanelType): React.ReactNode => {
     case PanelType.SceneView:
       return <SceneViewPanel />;
     case PanelType.Inspector:
-      return <EditorInspectorPanel />;
+      return <InspectorPanel />;
     case PanelType.AssetBrowser:
       return <AssetBrowserPanel />;
     case PanelType.Console:

@@ -52,6 +52,28 @@ export class ComponentPreloader {
     }
   }
 
+  private async preloadEditorComponents(): Promise<void> {
+    try {
+      // Load core editor components
+      await import('../../plugins/components/EditorTransformComponent');
+      await import('../../plugins/components/EditorMetadataComponent');
+      
+      // Load physics editor components
+      await import('../../plugins/components/EditorRigidBodyComponent');
+      await import('../../plugins/components/EditorColliderComponent');
+      await import('../../plugins/components/EditorJointComponent');
+      await import('../../plugins/components/EditorPhysicsTransformComponent');
+      
+      // Load three.js editor components
+      await import('../../plugins/components/EditorThreeLightComponent');
+      await import('../../plugins/components/EditorThreeCameraComponent');
+      await import('../../plugins/components/EditorThreeMeshComponent');
+    } catch (error) {
+      console.error('Failed to preload editor components:', error);
+      throw error;
+    }
+  }
+
   async preloadAllComponents(): Promise<void> {
     if (this.loaded) {
       return;
@@ -60,6 +82,7 @@ export class ComponentPreloader {
     try {
       await this.preloadCoreComponents();
       await this.preloadThreeComponents();
+      await this.preloadEditorComponents();
       
       const { discoverAndRegisterComponents } = await import('@esengine/nova-ecs-editor');
       discoverAndRegisterComponents();

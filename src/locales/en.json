@@ -1,0 +1,269 @@
+{
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "remove": "Remove",
+    "save": "Save",
+    "load": "Load",
+    "create": "Create",
+    "open": "Open",
+    "close": "Close",
+    "settings": "Settings",
+    "help": "Help",
+    "about": "About",
+    "yes": "Yes",
+    "no": "No",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "active": "Active",
+    "inactive": "Inactive",
+    "visible": "Visible",
+    "hidden": "Hidden",
+    "name": "Name",
+    "type": "Type",
+    "value": "Value",
+    "position": "Position",
+    "rotation": "Rotation",
+    "scale": "Scale",
+    "size": "Size",
+    "color": "Color",
+    "opacity": "Opacity",
+    "language": "Language"
+  },
+  "menu": {
+    "file": "File",
+    "edit": "Edit",
+    "view": "View",
+    "window": "Window",
+    "help": "Help",
+    "newProject": "New Project",
+    "openProject": "Open Project",
+    "saveProject": "Save Project",
+    "saveAs": "Save As...",
+    "recentProjects": "Recent Projects",
+    "preferences": "Preferences",
+    "exit": "Exit",
+    "undo": "Undo",
+    "redo": "Redo",
+    "cut": "Cut",
+    "copy": "Copy",
+    "paste": "Paste",
+    "duplicate": "Duplicate",
+    "selectAll": "Select All",
+    "showGrid": "Show Grid",
+    "showGizmos": "Show Gizmos",
+    "resetLayout": "Reset Layout"
+  },
+  "panels": {
+    "hierarchy": "Hierarchy",
+    "inspector": "Inspector",
+    "sceneView": "Scene View",
+    "assetBrowser": "Asset Browser",
+    "console": "Console",
+    "codeEditor": "Code Editor",
+    "physicsDebug": "Physics Debug"
+  },
+  "hierarchy": {
+    "title": "Hierarchy",
+    "searchPlaceholder": "Search entities...",
+    "createEntity": "Create Entity",
+    "createEmpty": "Create Empty",
+    "create3DObject": "3D Object",
+    "createUI": "UI",
+    "createLight": "Light",
+    "createCamera": "Camera",
+    "cube": "Cube",
+    "sphere": "Sphere",
+    "plane": "Plane",
+    "cylinder": "Cylinder",
+    "directionalLight": "Directional Light",
+    "pointLight": "Point Light",
+    "spotLight": "Spot Light",
+    "perspectiveCamera": "Perspective Camera",
+    "orthographicCamera": "Orthographic Camera"
+  },
+  "inspector": {
+    "title": "Inspector",
+    "noSelection": "Select an entity to inspect",
+    "addComponent": "Add Component",
+    "removeComponent": "Remove Component",
+    "componentSettings": "Component Settings",
+    "enableComponent": "Enable Component",
+    "disableComponent": "Disable Component",
+    "multipleSelected": "{{count}} entities selected",
+    "showingPrimary": "Showing primary selection: {{name}}"
+  },
+  "sceneView": {
+    "title": "Scene View",
+    "camera": "Camera",
+    "lighting": "Lighting",
+    "rendering": "Rendering",
+    "gizmos": "Gizmos",
+    "grid": "Grid",
+    "wireframe": "Wireframe",
+    "shaded": "Shaded",
+    "perspective": "Perspective",
+    "orthographic": "Orthographic",
+    "2D": "2D",
+    "3D": "3D",
+    "transformMode": {
+      "select": "Select",
+      "translate": "Translate",
+      "rotate": "Rotate",
+      "scale": "Scale"
+    }
+  },
+  "assetBrowser": {
+    "title": "Asset Browser",
+    "searchAssets": "Search assets...",
+    "gridView": "Grid View",
+    "listView": "List View",
+    "sortBy": "Sort by",
+    "filterBy": "Filter by",
+    "sortOptions": {
+      "name": "Name",
+      "type": "Type",
+      "size": "Size",
+      "date": "Date"
+    },
+    "assetTypes": {
+      "all": "All",
+      "scene": "Scene",
+      "model": "Model",
+      "texture": "Texture",
+      "material": "Material",
+      "audio": "Audio",
+      "script": "Script",
+      "font": "Font"
+    }
+  },
+  "console": {
+    "title": "Console",
+    "clear": "Clear",
+    "collapse": "Collapse",
+    "search": "Search...",
+    "filterLogs": "Filter logs",
+    "logLevels": {
+      "all": "All",
+      "info": "Info",
+      "warning": "Warning",
+      "error": "Error",
+      "debug": "Debug"
+    }
+  },
+  "physics": {
+    "title": "Physics Debug",
+    "simulation": "Physics Simulation",
+    "debugDraw": "Debug Draw",
+    "resetPhysics": "Reset Physics State",
+    "rigidBodies": "Rigid Bodies",
+    "colliders": "Colliders",
+    "joints": "Joints",
+    "contacts": "Contact Points",
+    "settings": "Physics Settings",
+    "gravity": "Gravity",
+    "timeStep": "Time Step",
+    "debugInfo": "Debug Info",
+    "notInitialized": "Physics system not initialized",
+    "initialized": "Initialized"
+  },
+  "components": {
+    "categories": {
+      "core": "Core",
+      "rendering": "Rendering",
+      "physics": "Physics",
+      "audio": "Audio",
+      "ui": "UI",
+      "animation": "Animation",
+      "scripting": "Scripting"
+    },
+    "transform": {
+      "displayName": "Transform",
+      "description": "Controls entity's position, rotation and scale in 3D space",
+      "position": "Position",
+      "rotation": "Rotation",
+      "scale": "Scale",
+      "parentId": "Parent ID"
+    },
+    "rigidBody": {
+      "displayName": "Rigid Body",
+      "description": "Adds physics rigid body properties to entity",
+      "type": "Body Type",
+      "linearDamping": "Linear Damping",
+      "angularDamping": "Angular Damping",
+      "gravityScale": "Gravity Scale",
+      "allowSleep": "Allow Sleep",
+      "fixedRotation": "Fixed Rotation",
+      "bulletMode": "Bullet Mode"
+    },
+    "collider": {
+      "displayName": "Collider",
+      "description": "Defines collision boundaries and physics material",
+      "isSensor": "Is Sensor",
+      "friction": "Friction",
+      "restitution": "Restitution",
+      "density": "Density"
+    },
+    "light": {
+      "displayName": "Light",
+      "description": "Adds lighting effects to the scene",
+      "lightType": "Light Type",
+      "color": "Color",
+      "intensity": "Intensity",
+      "distance": "Distance",
+      "decay": "Decay",
+      "castShadow": "Cast Shadow"
+    },
+    "camera": {
+      "displayName": "Camera",
+      "description": "Defines scene viewing angle and projection",
+      "cameraType": "Camera Type",
+      "fov": "Field of View",
+      "near": "Near Clip",
+      "far": "Far Clip",
+      "orthographicSize": "Orthographic Size"
+    }
+  },
+  "project": {
+    "newProject": "New Project",
+    "projectName": "Project Name",
+    "location": "Location",
+    "template": "Template",
+    "templates": {
+      "empty": "Empty Project",
+      "3d": "3D Project",
+      "2d": "2D Project",
+      "vr": "VR Project"
+    },
+    "createProject": "Create Project",
+    "loadingProject": "Loading Project...",
+    "projectLoaded": "Project loaded successfully",
+    "projectFailed": "Failed to load project"
+  },
+  "dialogs": {
+    "confirmDelete": "Are you sure you want to delete this item?",
+    "unsavedChanges": "You have unsaved changes. Do you want to save them?",
+    "invalidName": "Invalid name. Please enter a valid name.",
+    "fileExists": "File already exists. Do you want to replace it?"
+  },
+  "errors": {
+    "general": "An error occurred",
+    "fileNotFound": "File not found",
+    "invalidFormat": "Invalid file format",
+    "networkError": "Network error",
+    "permissionDenied": "Permission denied",
+    "outOfMemory": "Out of memory"
+  },
+  "success": {
+    "saved": "Saved successfully",
+    "loaded": "Loaded successfully",
+    "created": "Created successfully",
+    "deleted": "Deleted successfully",
+    "exported": "Exported successfully",
+    "imported": "Imported successfully"
+  }
+}
