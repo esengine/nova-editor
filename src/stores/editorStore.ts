@@ -15,7 +15,8 @@ import type {
   EditorEvent,
   PanelConfig,
   WorldState,
-  TransformMode
+  TransformMode,
+  ViewMode
 } from '../types';
 import type { AssetBrowserState, AssetType } from '../types/AssetTypes';
 import {
@@ -106,6 +107,7 @@ interface EditorActions {
   setTransformMode: (mode: TransformMode) => void;
   toggleSnap: () => void;
   setSnapSize: (size: number) => void;
+  setViewMode: (mode: ViewMode) => void;
   
   // World actions | 世界操作
   initializeWorld: () => Promise<void>;
@@ -356,7 +358,8 @@ export const useEditorStore = create<EditorState & EditorActions>()(
         showGizmos: true,
         transformMode: 'translate' as TransformMode,
         snapEnabled: false,
-        snapSize: 0.5
+        snapSize: 0.5,
+        viewMode: '3d' as ViewMode
       },
       assetBrowser: {
         currentFolderId: 'root',
@@ -504,6 +507,10 @@ export const useEditorStore = create<EditorState & EditorActions>()(
 
       setSnapSize: (size) => set((state) => {
         state.viewport.snapSize = size;
+      }),
+
+      setViewMode: (mode) => set((state) => {
+        state.viewport.viewMode = mode;
       }),
 
       setTheme: (theme) => set((state) => {

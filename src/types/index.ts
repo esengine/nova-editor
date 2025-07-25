@@ -192,6 +192,12 @@ export interface SelectionState {
 export type TransformMode = 'translate' | 'rotate' | 'scale';
 
 /**
+ * View mode for scene viewport
+ * 场景视口的视图模式
+ */
+export type ViewMode = '2d' | '3d';
+
+/**
  * Editor viewport state
  * 编辑器视口状态
  */
@@ -214,6 +220,8 @@ export interface ViewportState {
   snapEnabled: boolean;
   /** Snap grid size | 吸附网格大小 */
   snapSize: number;
+  /** Current view mode (2D/3D) | 当前视图模式（2D/3D） */
+  viewMode: ViewMode;
 }
 
 /**

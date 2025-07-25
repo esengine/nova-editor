@@ -120,7 +120,7 @@ export class ConsoleService {
    */
   addLog(level: LogLevel, message: string, stackTrace?: string, data?: any) {
     const entry: LogEntry = {
-      id: Date.now() + Math.random(),
+      id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       timestamp: Date.now(),
       level,
       message,

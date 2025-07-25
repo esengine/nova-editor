@@ -28,7 +28,7 @@ import type { EntityId } from '@esengine/nova-ecs';
  * 轨道控制器 - 集成阻尼的轨道相机控制
  */
 class OrbitControls {
-  private camera: THREE.PerspectiveCamera;
+  private camera: THREE.PerspectiveCamera | THREE.OrthographicCamera;
   private domElement: HTMLElement;
   private target = new THREE.Vector3();
   private spherical = new THREE.Spherical();
@@ -49,7 +49,7 @@ class OrbitControls {
   public maxDistance = 1000;
   public autoRotate = false;
   
-  constructor(camera: THREE.PerspectiveCamera, domElement: HTMLElement) {
+  constructor(camera: THREE.PerspectiveCamera | THREE.OrthographicCamera, domElement: HTMLElement) {
     this.camera = camera;
     this.domElement = domElement;
     this.spherical.setFromVector3(this.camera.position.clone().sub(this.target));
@@ -145,6 +145,11 @@ class OrbitControls {
     this.scale *= zoomScale;
   };
   
+  updateCamera(camera: THREE.PerspectiveCamera | THREE.OrthographicCamera): void {
+    this.camera = camera;
+    this.spherical.setFromVector3(this.camera.position.clone().sub(this.target));
+  }
+
   dispose(): void {
     this.domElement.removeEventListener('mousedown', this.onMouseDown);
     this.domElement.removeEventListener('mousemove', this.onMouseMove);
@@ -169,6 +174,10 @@ class SelectionSystem {
   
   onSelectionChanged(callback: (selected: Set<THREE.Object3D>) => void): void {
     this.onSelectionChange = callback;
+  }
+
+  updateCamera(camera: THREE.Camera): void {
+    this.camera = camera;
   }
   
   raycast(pointer: THREE.Vector2, selectableObjects: THREE.Object3D[]): THREE.Object3D | null {
@@ -317,6 +326,7 @@ export const NovaThreeRenderer: React.FC<NovaThreeRendererProps> = ({
   const showGrid = useEditorStore(state => state.viewport.showGrid);
   const showGizmos = useEditorStore(state => state.viewport.showGizmos);
   const transformMode = useEditorStore(state => state.viewport.transformMode);
+  const viewMode = useEditorStore(state => state.viewport.viewMode);
   const selectedEntities = useEditorStore(state => state.selection.selectedEntities);
   const selectEntity = useEditorStore(state => state.selectEntity);
   const clearSelection = useEditorStore(state => state.clearSelection);
@@ -550,6 +560,67 @@ export const NovaThreeRenderer: React.FC<NovaThreeRendererProps> = ({
     
     console.log('Rendering systems initialized successfully');
   };
+
+  /**
+   * Switch camera mode between 2D and 3D
+   * 在2D和3D模式之间切换相机
+   */
+  const switchCameraMode = useCallback((mode: '2d' | '3d') => {
+    if (!renderSystemRef.current || !canvasRef.current) return;
+
+    const renderSystem = renderSystemRef.current;
+    const canvas = canvasRef.current;
+    const aspect = canvas.clientWidth / canvas.clientHeight;
+
+    if (mode === '2d') {
+      // Create orthographic camera for 2D view
+      const frustumSize = 10;
+      const orthoCamera = new THREE.OrthographicCamera(
+        -frustumSize * aspect / 2, frustumSize * aspect / 2,
+        frustumSize / 2, -frustumSize / 2,
+        0.1, 1000
+      );
+      
+      // Set 2D camera position (front view)
+      orthoCamera.position.set(0, 0, 10);
+      orthoCamera.lookAt(0, 0, 0);
+      
+      // Update render system camera
+      renderSystem.camera = orthoCamera;
+      
+      // Update controls with new camera
+      if (orbitControlsRef.current) {
+        orbitControlsRef.current.updateCamera(orthoCamera);
+        orbitControlsRef.current.enableRotate = false; // Disable rotation in 2D mode
+      }
+      
+      // Update selection system
+      if (selectionSystemRef.current) {
+        selectionSystemRef.current.updateCamera(orthoCamera);
+      }
+    } else {
+      // Create perspective camera for 3D view
+      const perspectiveCamera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
+      
+      // Set 3D camera position
+      perspectiveCamera.position.set(5, 5, 5);
+      perspectiveCamera.lookAt(0, 0, 0);
+      
+      // Update render system camera
+      renderSystem.camera = perspectiveCamera;
+      
+      // Update controls with new camera
+      if (orbitControlsRef.current) {
+        orbitControlsRef.current.updateCamera(perspectiveCamera);
+        orbitControlsRef.current.enableRotate = true; // Enable rotation in 3D mode
+      }
+      
+      // Update selection system
+      if (selectionSystemRef.current) {
+        selectionSystemRef.current.updateCamera(perspectiveCamera);
+      }
+    }
+  }, []);
   
   /**
    * Setup event listeners for mouse interactions
@@ -764,6 +835,12 @@ export const NovaThreeRenderer: React.FC<NovaThreeRendererProps> = ({
       }
     };
   }, [isInitialized, showGizmos]);
+
+  // Handle view mode changes (2D/3D switch)
+  useEffect(() => {
+    if (!isInitialized) return;
+    switchCameraMode(viewMode);
+  }, [viewMode, isInitialized, switchCameraMode]);
 
   /**
    * Handle viewport resize
